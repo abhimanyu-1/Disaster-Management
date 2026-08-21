@@ -1,0 +1,20 @@
+[
+  {
+    "id": "HOUSE-001",
+    "lat": 9.498,
+    "lon": 76.338,
+    "population": 5,
+    "criticality": 0.4,
+    "accessibility": 0.6,
+    "flood_zone": true
+  },
+  {
+    "id": "HOSPITAL-001",
+    "lat": 9.500,
+    "lon": 76.340,
+    "population": 150,
+    "criticality": 1.0,
+    "accessibility": 0.3,
+    "flood_zone": false
+  }
+]
