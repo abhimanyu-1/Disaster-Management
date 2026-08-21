@@ -16,20 +16,22 @@ def analyze_images(request: VisionAgentRequest) -> VisionAgentResponse:
 
     client = genai.Client(api_key=api_key)
     
-    before_img = Image.open(request.before_image_path)
-    after_img = Image.open(request.after_image_path)
+    img = Image.open(request.image_path)
     
     prompt = f"""
     You are a highly capable disaster assessment AI.
-    Analyze these two images: the first is 'before' the disaster, the second is 'after'.
+    Analyze this disaster image and assess the structural damage.
+    CRITICAL: You MUST identify the type of disaster that occurred (e.g., Flood, Earthquake, Hurricane, Fire, Tornado, etc.) and state it in the 'damage_type' field.
+    If there is water flooding the area, it is a Flood. If structures are crumbled, it might be an Earthquake.
+    Make your damage score and evidence decisions based on the severity of this specific disaster type.
     Asset ID: {request.asset_id}
     
     Respond with ONLY a JSON object exactly matching this structure:
     {{
         "asset_type": "House / Hospital / Bridge / etc.",
         "damage_detected": true/false,
-        "damage_type": "Structural / Water / Fire / etc.",
-        "damage_score": 0.0 to 1.0 (float),
+        "damage_type": "Flood / Earthquake / Fire / Hurricane / None",
+        "damage_score": 0.0 to 1.0 (float, where 1.0 is completely destroyed),
         "confidence": 0.0 to 1.0 (float),
         "evidence": ["evidence 1", "evidence 2"]
     }}
@@ -37,7 +39,7 @@ def analyze_images(request: VisionAgentRequest) -> VisionAgentResponse:
     
     response = client.models.generate_content(
         model='gemini-2.5-flash',
-        contents=[prompt, before_img, after_img]
+        contents=[prompt, img]
     )
     
     text = response.text

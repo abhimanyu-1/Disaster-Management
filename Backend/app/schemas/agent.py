@@ -2,8 +2,7 @@ from pydantic import BaseModel
 from typing import List
 
 class VisionAgentRequest(BaseModel):
-    before_image_path: str
-    after_image_path: str
+    image_path: str
     asset_id: str
 
 class VisionAgentResponse(BaseModel):
@@ -14,13 +13,6 @@ class VisionAgentResponse(BaseModel):
     confidence: float
     evidence: List[str]
 
-class ChangeAgentRequest(BaseModel):
-    before_image_path: str
-    after_image_path: str
-
-class ChangeAgentResponse(BaseModel):
-    changed_area_percentage: float
-    change_score: float
 
 class GeoAgentRequest(BaseModel):
     lat: float

@@ -13,19 +13,29 @@ import {
 } from 'lucide-react';
 
 function App() {
-  const [beforeFile, setBeforeFile] = useState(null);
-  const [afterFile, setAfterFile] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
   const [demoPair, setDemoPair] = useState('mexico-earthquake_00000076');
   const [isProcessing, setIsProcessing] = useState(false);
   const [assessment, setAssessment] = useState(null);
   
-  const beforeInputRef = useRef(null);
-  const afterInputRef = useRef(null);
+  const imageInputRef = useRef(null);
+
+  const fileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+  });
 
   const handleAnalyze = async () => {
     setIsProcessing(true);
     try {
-      // In a real app we'd upload images, but here we just pass the dummy paths
+      let base64Image = null;
+      if (imageFile) {
+        base64Image = await fileToBase64(imageFile);
+      }
+      
+      // In a real app we'd upload images, but here we pass the path or base64 data
       const response = await fetch('http://localhost:8000/api/assessments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -33,8 +43,7 @@ function App() {
           asset_id: "DEMO-" + Math.floor(Math.random() * 10000),
           lat: 19.4326,
           lon: -99.1332,
-          before_image_path: "data/imagery/before.jpg",
-          after_image_path: "data/imagery/after.jpg",
+          image_path: base64Image || "data/imagery/after.jpg",
           claim_desc: "Visual destruction",
           claim_amount: 500000,
           field_report: "Area unapproachable"
@@ -106,27 +115,18 @@ function App() {
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-diq-line/70 bg-slate-950/70 text-slate-400">
                       <UploadCloud className="h-5 w-5" />
                     </div>
-                    <p className="mt-3 max-w-[190px] text-sm font-semibold leading-5 text-slate-200">Drag & drop before/after images here</p>
+                    <p className="mt-3 max-w-[190px] text-sm font-semibold leading-5 text-slate-200">Drag & drop disaster image here</p>
                     <div className="my-3 h-px w-full bg-diq-line/40"></div>
                   </div>
                   
                   <div className="space-y-2.5">
                     <div className="space-y-1.5">
-                      <label className="block font-label text-[9px] uppercase tracking-[0.18em] text-slate-500">Before image</label>
-                      <button onClick={() => beforeInputRef.current?.click()} className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-diq-line/70 bg-slate-950/50 px-2.5 py-2 text-xs transition hover:border-diq-orange/70 hover:bg-slate-900/70">
+                      <label className="block font-label text-[9px] uppercase tracking-[0.18em] text-slate-500">Disaster Image</label>
+                      <button onClick={() => imageInputRef.current?.click()} className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-diq-line/70 bg-slate-950/50 px-2.5 py-2 text-xs transition hover:border-diq-orange/70 hover:bg-slate-900/70">
                         <span className="shrink-0 rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-100">Browse</span>
-                        <span className="min-w-0 truncate text-slate-500">{beforeFile ? beforeFile.name : 'No file selected'}</span>
+                        <span className="min-w-0 truncate text-slate-500">{imageFile ? imageFile.name : 'No file selected'}</span>
                       </button>
-                      <input ref={beforeInputRef} type="file" className="hidden" onChange={(e) => setBeforeFile(e.target.files[0])} />
-                    </div>
-                    
-                    <div className="space-y-1.5">
-                      <label className="block font-label text-[9px] uppercase tracking-[0.18em] text-slate-500">After image</label>
-                      <button onClick={() => afterInputRef.current?.click()} className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-diq-line/70 bg-slate-950/50 px-2.5 py-2 text-xs transition hover:border-diq-orange/70 hover:bg-slate-900/70">
-                        <span className="shrink-0 rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-100">Browse</span>
-                        <span className="min-w-0 truncate text-slate-500">{afterFile ? afterFile.name : 'No file selected'}</span>
-                      </button>
-                      <input ref={afterInputRef} type="file" className="hidden" onChange={(e) => setAfterFile(e.target.files[0])} />
+                      <input ref={imageInputRef} type="file" className="hidden" onChange={(e) => setImageFile(e.target.files[0])} />
                     </div>
                   </div>
                 </div>
@@ -138,8 +138,8 @@ function App() {
                   onChange={(e) => setDemoPair(e.target.value)}
                   className="w-full rounded-xl border border-diq-line/70 bg-slate-950/60 px-3 py-3 text-sm text-slate-100 transition hover:border-diq-line focus:outline-none focus:ring-1 focus:ring-diq-orange"
                 >
-                  <option value="mexico-earthquake_00000076">earthquake: mexico-earthquake_00000076</option>
-                  <option value="midwest-flooding_00000008">flood: midwest-flooding_00000008</option>
+                  <option value="mexico-earthquake_00000076">Mexico Earthquake</option>
+                  <option value="midwest-flooding_00000008">Midwest Flood</option>
                 </select>
                 
                 <button 
@@ -157,40 +157,19 @@ function App() {
           {/* Center Panel: Visualization */}
           <section className="space-y-4">
             <div className="overflow-hidden rounded-xl border border-blue-500/35 bg-diq-panel/45 shadow-2xl shadow-black/20">
-              <div className="grid min-h-[700px] xl:min-h-[800px] gap-0 grid-rows-2">
+              <div className="min-h-[700px] xl:min-h-[800px]">
                 
-                {/* Before Image */}
-                <div className="relative overflow-hidden border-b border-blue-500/30 bg-slate-950">
+                {/* Single Image & Overlay */}
+                <div className="relative overflow-hidden bg-slate-950 h-full w-full">
                   <div className="absolute left-4 top-4 z-20 rounded bg-blue-950/90 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white shadow-lg shadow-black/30">
-                    Before Disaster
+                    Disaster AI Damage Overlay
                   </div>
-                  <div className="flex h-full min-h-[350px] items-center justify-center bg-slate-950/35">
-                    {assessment ? (
-                      <img 
-                        src={beforeFile ? URL.createObjectURL(beforeFile) : "https://images.unsplash.com/photo-1502003148287-a82ef80a6abc?q=80&w=800&auto=format&fit=crop"} 
-                        alt="Before Disaster" 
-                        className="h-full w-full object-contain"
-                      />
-                    ) : (
-                      <div className="px-6 text-center">
-                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-diq-line/70 bg-slate-950/70 text-xl text-slate-500">◇</div>
-                        <p className="mt-4 font-label text-xs uppercase tracking-[0.22em] text-slate-500">Awaiting Imagery</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {/* After Image & Overlay */}
-                <div className="relative overflow-hidden bg-slate-950">
-                  <div className="absolute left-4 top-4 z-20 rounded bg-blue-950/90 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white shadow-lg shadow-black/30">
-                    AI Damage Overlay
-                  </div>
-                  <div className="flex h-full min-h-[350px] items-center justify-center bg-slate-950/35">
+                  <div className="flex h-full items-center justify-center bg-slate-950/35">
                     {assessment ? (
                       <div className="relative h-full w-full">
                         <img 
-                          src={afterFile ? URL.createObjectURL(afterFile) : "https://images.unsplash.com/photo-1542385151-efd9000785a0?q=80&w=800&auto=format&fit=crop"} 
-                          alt="After Disaster" 
+                          src={imageFile ? URL.createObjectURL(imageFile) : "https://images.unsplash.com/photo-1542385151-efd9000785a0?q=80&w=800&auto=format&fit=crop"} 
+                          alt="Disaster Image" 
                           className="h-full w-full object-contain"
                         />
                         {assessment.vision.damage_detected && (
@@ -207,7 +186,7 @@ function App() {
                     ) : (
                       <div className="px-6 text-center">
                         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-diq-line/70 bg-slate-950/70 text-xl text-slate-500">◇</div>
-                        <p className="mt-4 font-label text-xs uppercase tracking-[0.22em] text-slate-500">Awaiting Imagery</p>
+                        <p className="mt-4 font-label text-xs uppercase tracking-[0.18em] text-slate-500">Awaiting Imagery</p>
                       </div>
                     )}
                   </div>
@@ -246,7 +225,7 @@ function App() {
                         <ul className="space-y-2 text-sm text-slate-300">
                           <li><span className="font-semibold text-slate-400">Damage Type:</span> {assessment.vision.damage_type.toUpperCase()}</li>
                           <li><span className="font-semibold text-slate-400">Vision Confidence:</span> {(assessment.vision.confidence * 100).toFixed(0)}%</li>
-                          <li><span className="font-semibold text-slate-400">Changed Area:</span> {assessment.change_detection.changed_area_percentage}%</li>
+
                           <li><span className="font-semibold text-slate-400">Pop. Affected:</span> {assessment.geo_context.population_affected}</li>
                         </ul>
                       </div>
