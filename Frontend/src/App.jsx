@@ -17,6 +17,9 @@ function App() {
   const [demoPair, setDemoPair] = useState('earthquake');
   const [isProcessing, setIsProcessing] = useState(false);
   const [assessment, setAssessment] = useState(null);
+  const [userBBox, setUserBBox] = useState(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   
   const imageInputRef = useRef(null);
 
@@ -48,6 +51,8 @@ function App() {
 
   const handleAnalyze = async () => {
     setIsProcessing(true);
+    setUserBBox(null);
+    setIsDrawing(false);
     try {
       let base64Image = null;
       if (imageFile) {
@@ -70,10 +75,41 @@ function App() {
       });
       const data = await response.json();
       setAssessment(data);
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error('Error fetching assessment:', error);
+    } finally {
+      setIsProcessing(false);
     }
-    setIsProcessing(false);
+  };
+
+  const handlePointerDown = (e) => {
+    if (!assessment) return; // Only allow drawing if assessment exists
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 1000;
+    const y = ((e.clientY - rect.top) / rect.height) * 1000;
+    setIsDrawing(true);
+    setDragStart({ x, y });
+    setUserBBox([y, x, y, x]); // [ymin, xmin, ymax, xmax]
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDrawing) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1000, ((e.clientX - rect.left) / rect.width) * 1000));
+    const y = Math.max(0, Math.min(1000, ((e.clientY - rect.top) / rect.height) * 1000));
+    
+    setUserBBox([
+      Math.min(dragStart.y, y), // ymin
+      Math.min(dragStart.x, x), // xmin
+      Math.max(dragStart.y, y), // ymax
+      Math.max(dragStart.x, x)  // xmax
+    ]);
+  };
+
+  const handlePointerUp = (e) => {
+    setIsDrawing(false);
+    e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
   return (
@@ -187,23 +223,32 @@ function App() {
                   </div>
                   <div className="flex h-full items-center justify-center bg-slate-950/35">
                     {assessment ? (
-                      <div className="relative h-full w-full">
+                      <div 
+                        className="relative h-full w-full select-none cursor-crosshair touch-none"
+                        onPointerDown={handlePointerDown}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                        onPointerCancel={handlePointerUp}
+                      >
                         <img 
                           src={imageFile ? URL.createObjectURL(imageFile) : demoUrls[demoPair]} 
                           alt="Disaster Image" 
-                          className="h-full w-full object-contain"
+                          className="pointer-events-none h-full w-full object-contain"
+                          draggable="false"
                         />
-                        {assessment.vision.damage_detected && assessment.vision.bounding_box && (
+                        {(userBBox || (assessment.vision.damage_detected && assessment.vision.bounding_box)) && (
                           <div 
-                            className="absolute border-[3px] border-red-500 bg-red-500/15 shadow-[0_0_15px_rgba(239,68,68,0.5)] transition-all duration-700 ease-in-out"
-                            style={getBoxStyle(assessment.vision.bounding_box)}
+                            className={`absolute border-[3px] shadow-[0_0_15px_rgba(239,68,68,0.5)] ${userBBox ? 'border-orange-500 bg-orange-500/15' : 'border-red-500 bg-red-500/15'} ${isDrawing ? 'transition-none' : 'transition-all duration-700 ease-in-out'}`}
+                            style={getBoxStyle(userBBox || assessment.vision.bounding_box)}
                           >
-                            <span className="absolute -top-7 left-[-3px] bg-red-500 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white shadow-lg whitespace-nowrap">
-                              {assessment.vision.damage_type} DETECTED
+                            <span className={`absolute -top-7 left-[-3px] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white shadow-lg whitespace-nowrap ${userBBox ? 'bg-orange-500' : 'bg-red-500'}`}>
+                              {userBBox ? 'HITL OVERRIDE' : assessment.vision.damage_type + ' DETECTED'}
                             </span>
-                            <span className="absolute -bottom-6 right-[-3px] bg-red-950/80 px-2 py-0.5 text-[9px] font-bold uppercase text-red-400 border border-red-500/50 whitespace-nowrap">
-                              {(assessment.vision.confidence * 100).toFixed(0)}% CONFIDENCE
-                            </span>
+                            {!userBBox && (
+                              <span className="absolute -bottom-6 right-[-3px] bg-red-950/80 px-2 py-0.5 text-[9px] font-bold uppercase text-red-400 border border-red-500/50 whitespace-nowrap">
+                                {(assessment.vision.confidence * 100).toFixed(0)}% CONFIDENCE
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
