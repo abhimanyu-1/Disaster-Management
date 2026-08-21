@@ -14,7 +14,7 @@ import {
 
 function App() {
   const [imageFile, setImageFile] = useState(null);
-  const [demoPair, setDemoPair] = useState('mexico-earthquake_00000076');
+  const [demoPair, setDemoPair] = useState('earthquake');
   const [isProcessing, setIsProcessing] = useState(false);
   const [assessment, setAssessment] = useState(null);
   
@@ -26,6 +26,25 @@ function App() {
     reader.onload = () => resolve(reader.result);
     reader.onerror = error => reject(error);
   });
+
+  const getBoxStyle = (bbox) => {
+    if (!bbox || bbox.length !== 4) return { display: 'none' };
+    const [ymin, xmin, ymax, xmax] = bbox;
+    if (ymin === 0 && xmax === 0) return { display: 'none' };
+    return {
+      top: `${(ymin / 1000) * 100}%`,
+      left: `${(xmin / 1000) * 100}%`,
+      height: `${((ymax - ymin) / 1000) * 100}%`,
+      width: `${((xmax - xmin) / 1000) * 100}%`
+    };
+  };
+
+  const demoUrls = {
+    "earthquake": "https://images.unsplash.com/photo-1541888079813-20703f848b8c?q=80&w=800&auto=format&fit=crop",
+    "flood": "https://images.unsplash.com/photo-1547683905-f686c993aae5?q=80&w=800&auto=format&fit=crop",
+    "hurricane": "https://images.unsplash.com/photo-1584985220464-8390497de283?q=80&w=800&auto=format&fit=crop",
+    "wildfire": "https://images.unsplash.com/photo-1601584347783-f368c85770c0?q=80&w=800&auto=format&fit=crop"
+  };
 
   const handleAnalyze = async () => {
     setIsProcessing(true);
@@ -43,7 +62,7 @@ function App() {
           asset_id: "DEMO-" + Math.floor(Math.random() * 10000),
           lat: 19.4326,
           lon: -99.1332,
-          image_path: base64Image || "data/imagery/after.jpg",
+          image_path: base64Image || demoUrls[demoPair],
           claim_desc: "Visual destruction",
           claim_amount: 500000,
           field_report: "Area unapproachable"
@@ -138,8 +157,10 @@ function App() {
                   onChange={(e) => setDemoPair(e.target.value)}
                   className="w-full rounded-xl border border-diq-line/70 bg-slate-950/60 px-3 py-3 text-sm text-slate-100 transition hover:border-diq-line focus:outline-none focus:ring-1 focus:ring-diq-orange"
                 >
-                  <option value="mexico-earthquake_00000076">Mexico Earthquake</option>
-                  <option value="midwest-flooding_00000008">Midwest Flood</option>
+                  <option value="earthquake">Earthquake</option>
+                  <option value="flood">Flood</option>
+                  <option value="hurricane">Hurricane</option>
+                  <option value="wildfire">Wildfire</option>
                 </select>
                 
                 <button 
@@ -168,16 +189,19 @@ function App() {
                     {assessment ? (
                       <div className="relative h-full w-full">
                         <img 
-                          src={imageFile ? URL.createObjectURL(imageFile) : "https://images.unsplash.com/photo-1542385151-efd9000785a0?q=80&w=800&auto=format&fit=crop"} 
+                          src={imageFile ? URL.createObjectURL(imageFile) : demoUrls[demoPair]} 
                           alt="Disaster Image" 
                           className="h-full w-full object-contain"
                         />
-                        {assessment.vision.damage_detected && (
-                          <div className="absolute top-[20%] left-[20%] h-[60%] w-[60%] border-[3px] border-red-500 bg-red-500/15 shadow-[0_0_15px_rgba(239,68,68,0.5)]">
-                            <span className="absolute -top-7 left-[-3px] bg-red-500 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
+                        {assessment.vision.damage_detected && assessment.vision.bounding_box && (
+                          <div 
+                            className="absolute border-[3px] border-red-500 bg-red-500/15 shadow-[0_0_15px_rgba(239,68,68,0.5)] transition-all duration-700 ease-in-out"
+                            style={getBoxStyle(assessment.vision.bounding_box)}
+                          >
+                            <span className="absolute -top-7 left-[-3px] bg-red-500 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white shadow-lg whitespace-nowrap">
                               {assessment.vision.damage_type} DETECTED
                             </span>
-                            <span className="absolute -bottom-6 right-[-3px] bg-red-950/80 px-2 py-0.5 text-[9px] font-bold uppercase text-red-400 border border-red-500/50">
+                            <span className="absolute -bottom-6 right-[-3px] bg-red-950/80 px-2 py-0.5 text-[9px] font-bold uppercase text-red-400 border border-red-500/50 whitespace-nowrap">
                               {(assessment.vision.confidence * 100).toFixed(0)}% CONFIDENCE
                             </span>
                           </div>

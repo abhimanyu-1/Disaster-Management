@@ -88,7 +88,8 @@ def run_workflow(request) -> FinalAssessment:
             damage_type=vision_resp.damage_type,
             damage_score=round(vision_resp.damage_score, 3),
             confidence=round(vision_resp.confidence, 3),
-            evidence=vision_resp.evidence
+            evidence=vision_resp.evidence,
+            bounding_box=vision_resp.bounding_box
         ),
         geo_context=GeoAssessment(
             population_affected=geo_resp.population_affected,

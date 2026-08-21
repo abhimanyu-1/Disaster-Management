@@ -12,6 +12,7 @@ class VisionAgentResponse(BaseModel):
     damage_score: float
     confidence: float
     evidence: List[str]
+    bounding_box: List[int]
 
 
 class GeoAgentRequest(BaseModel):
