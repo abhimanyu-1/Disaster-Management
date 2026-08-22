@@ -6,7 +6,7 @@ class SamAgentRequest(BaseModel):
     rough_bbox: List[float]
 
 class SamAgentResponse(BaseModel):
-    refined_bbox: List[float]
+    refined_bboxes: List[List[float]]
 
 
 class VisionAgentRequest(BaseModel):

@@ -79,24 +79,30 @@ def run_sam_inference(request: SamAgentRequest) -> SamAgentResponse:
     # We take the first predicted mask (index 0 out of 3)
     best_mask = masks[0][0][0].numpy()
     
-    # Find bounding box of the boolean mask
-    y_indices, x_indices = np.where(best_mask)
+    # Use cv2 to find distinct regions
+    import cv2
+    mask_uint8 = (best_mask * 255).astype(np.uint8)
+    contours, _ = cv2.findContours(mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
-    if len(y_indices) == 0 or len(x_indices) == 0:
-        # Fallback to the original rough box if SAM fails to segment anything
-        return SamAgentResponse(refined_bbox=request.rough_bbox)
+    if not contours:
+        return SamAgentResponse(refined_bboxes=[request.rough_bbox])
         
-    new_pixel_xmin = np.min(x_indices)
-    new_pixel_xmax = np.max(x_indices)
-    new_pixel_ymin = np.min(y_indices)
-    new_pixel_ymax = np.max(y_indices)
+    refined_bboxes = []
+    total_area = width * height
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area < total_area * 0.01:
+            continue # skip regions smaller than 1% of image
+            
+        x, y, w, h = cv2.boundingRect(contour)
+        norm_ymin = int((y / height) * 1000)
+        norm_xmin = int((x / width) * 1000)
+        norm_ymax = int(((y + h) / height) * 1000)
+        norm_xmax = int(((x + w) / width) * 1000)
+        
+        refined_bboxes.append([norm_ymin, norm_xmin, norm_ymax, norm_xmax])
+        
+    if not refined_bboxes:
+        refined_bboxes = [request.rough_bbox]
     
-    # Convert back to normalized 0-1000 scale [ymin, xmin, ymax, xmax]
-    norm_ymin = int((new_pixel_ymin / height) * 1000)
-    norm_xmin = int((new_pixel_xmin / width) * 1000)
-    norm_ymax = int((new_pixel_ymax / height) * 1000)
-    norm_xmax = int((new_pixel_xmax / width) * 1000)
-    
-    refined_bbox = [norm_ymin, norm_xmin, norm_ymax, norm_xmax]
-    
-    return SamAgentResponse(refined_bbox=refined_bbox)
+    return SamAgentResponse(refined_bboxes=refined_bboxes)

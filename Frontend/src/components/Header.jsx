@@ -1,18 +1,18 @@
 import { useState } from 'react';
-import { 
-  Settings, 
-  Check, 
+import {
+  Settings,
+  Check,
   RefreshCw,
   Activity,
   Radio
 } from 'lucide-react';
 import { api } from '../services/api';
 
-export default function Header({ 
-  backendStatus, 
-  onRefresh, 
-  isRefreshing, 
-  onStatusChange 
+export default function Header({
+  backendStatus,
+  onRefresh,
+  isRefreshing,
+  onStatusChange
 }) {
   const [showConfig, setShowConfig] = useState(false);
   const [apiUrl, setApiUrl] = useState(api.getBaseUrl());
@@ -35,15 +35,13 @@ export default function Header({
   return (
     <header className="mb-4 rounded-2xl border border-slate-800 bg-[#0B111E]/95 px-5 py-3.5 shadow-2xl relative">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        
+
         {/* Brand */}
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-500 via-orange-600 to-red-600 flex items-center justify-center shadow-lg shadow-orange-950/50 border border-orange-400/30 shrink-0">
-            <span className="text-xl">🛰️</span>
-          </div>
+          <img src="/logo.png" alt="DisasterAI Logo" className="h-10 w-auto object-contain shrink-0" />
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-black tracking-tight text-white">DisasterAI</h1>
+              <h1 className="text-sm font-black tracking-tight text-white">DisasterAI</h1>
               <span className="rounded-md border border-orange-500/40 bg-orange-950/40 px-2 py-0.5 text-[10px] font-mono font-bold tracking-wider text-orange-400">
                 Multi-Agent Intelligence
               </span>
@@ -59,12 +57,10 @@ export default function Header({
           {/* Live Backend Connection Indicator */}
           <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-[#080D18] px-3 py-1.5">
             <span className="text-[10px] font-bold text-slate-500">API BACKEND:</span>
-            <span className={`flex items-center gap-1.5 font-bold ${
-              backendStatus?.online ? 'text-emerald-400' : 'text-rose-400'
-            }`}>
-              <span className={`h-2 w-2 rounded-full ${
-                backendStatus?.online ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
-              }`} />
+            <span className={`flex items-center gap-1.5 font-bold ${backendStatus?.online ? 'text-emerald-400' : 'text-rose-400'
+              }`}>
+              <span className={`h-2 w-2 rounded-full ${backendStatus?.online ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+                }`} />
               {backendStatus?.online ? (
                 <span>CONNECTED {backendStatus.latency ? `(${backendStatus.latency}ms)` : ''}</span>
               ) : (
@@ -103,8 +99,8 @@ export default function Header({
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                 FastAPI Backend URL
               </label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={apiUrl}
                 onChange={(e) => setApiUrl(e.target.value)}
                 placeholder="http://localhost:8000"
@@ -112,14 +108,14 @@ export default function Header({
               />
             </div>
             <div className="flex items-end gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-              <button 
+              <button
                 type="submit"
                 className="rounded-xl bg-orange-600 hover:bg-orange-500 px-4 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5"
               >
                 {savedSuccess ? <Check className="h-3.5 w-3.5" /> : null}
                 {savedSuccess ? 'Saved!' : 'Save'}
               </button>
-              <button 
+              <button
                 type="button"
                 onClick={() => setShowConfig(false)}
                 className="rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-1.5 text-xs text-slate-400 hover:text-white"

@@ -16,7 +16,8 @@ export default function MissionControl({
   imageFile,
   setImageFile,
   imagePreview,
-  setImagePreview
+  setImagePreview,
+  onImageReset
 }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [assetId, setAssetId] = useState('ASSET-' + Math.floor(1000 + Math.random() * 9000));
@@ -31,6 +32,7 @@ export default function MissionControl({
   const handleFileSelected = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (onImageReset) onImageReset();
       setImageFile(file);
       const previewUrl = URL.createObjectURL(file);
       setImagePreview(previewUrl);
@@ -43,6 +45,7 @@ export default function MissionControl({
 
   const handleClearImage = (e) => {
     e.stopPropagation();
+    if (onImageReset) onImageReset();
     setImageFile(null);
     setImagePreview(null);
     setUploadError(null);

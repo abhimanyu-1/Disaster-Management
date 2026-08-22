@@ -12,7 +12,6 @@ export default function App() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [currentAssessment, setCurrentAssessment] = useState(null);
-  const [userBBox, setUserBBox] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [inferenceTime, setInferenceTime] = useState(null);
@@ -52,20 +51,13 @@ export default function App() {
 
     runInitialCheck();
 
-    const interval = setInterval(async () => {
-      const health = await api.checkHealth();
-      if (isMounted) setBackendStatus(health);
-    }, 15000);
-
     return () => {
       isMounted = false;
-      clearInterval(interval);
     };
   }, []);
 
   const handleAnalyze = async (payload) => {
     setIsProcessing(true);
-    setUserBBox(null);
     const startTime = performance.now();
 
     try {
@@ -95,6 +87,23 @@ export default function App() {
     }
   };
 
+  const handleImageReset = () => {
+    setCurrentAssessment(null);
+  };
+
+  const handleSaveBBox = (newBoxes) => {
+    if (currentAssessment && newBoxes) {
+      setCurrentAssessment(prev => ({
+        ...prev,
+        vision: {
+          ...prev.vision,
+          bounding_boxes: newBoxes
+        }
+      }));
+      addToast('success', 'HITL Override saved to assessment');
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[#070B13] text-slate-100 p-3 sm:p-4 lg:p-5 font-sans selection:bg-orange-500 selection:text-white">
       <div className="mx-auto max-w-[1920px] space-y-4">
@@ -119,6 +128,7 @@ export default function App() {
               setImageFile={setImageFile}
               imagePreview={imagePreview}
               setImagePreview={setImagePreview}
+              onImageReset={handleImageReset}
             />
           </div>
 
@@ -128,8 +138,7 @@ export default function App() {
               imageUrl={imagePreview}
               assessment={currentAssessment}
               isProcessing={isProcessing}
-              userBBox={userBBox}
-              setUserBBox={setUserBBox}
+              onSaveBBox={handleSaveBBox}
             />
 
             {/* Bottom Multi-Agent Telemetry Log */}
