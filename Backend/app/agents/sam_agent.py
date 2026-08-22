@@ -1,5 +1,3 @@
-import torch
-from transformers import SamModel, SamProcessor
 from PIL import Image
 import numpy as np
 from ..schemas.agent import SamAgentRequest, SamAgentResponse
@@ -11,11 +9,17 @@ _SAM_PROCESSOR = None
 def get_sam_components():
     global _SAM_MODEL, _SAM_PROCESSOR
     if _SAM_MODEL is None:
-        model_id = "facebook/sam-vit-base"
-        _SAM_PROCESSOR = SamProcessor.from_pretrained(model_id)
-        _SAM_MODEL = SamModel.from_pretrained(model_id)
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        _SAM_MODEL.to(device)
+        try:
+            import torch
+            from transformers import SamModel, SamProcessor
+            model_id = "facebook/sam-vit-base"
+            _SAM_PROCESSOR = SamProcessor.from_pretrained(model_id)
+            _SAM_MODEL = SamModel.from_pretrained(model_id)
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            _SAM_MODEL.to(device)
+        except ImportError:
+            print("[SAM Agent] PyTorch or Transformers not installed. Skipping SAM refinement.")
+            return None, None
     return _SAM_PROCESSOR, _SAM_MODEL
 
 def run_sam_inference(request: SamAgentRequest) -> SamAgentResponse:
@@ -51,6 +55,10 @@ def run_sam_inference(request: SamAgentRequest) -> SamAgentResponse:
     input_boxes = [[[pixel_xmin, pixel_ymin, pixel_xmax, pixel_ymax]]]
     
     processor, model = get_sam_components()
+    if processor is None or model is None:
+        return SamAgentResponse(refined_bbox=request.rough_bbox)
+        
+    import torch
     device = model.device
     
     inputs = processor(img, input_boxes=[input_boxes], return_tensors="pt").to(device)

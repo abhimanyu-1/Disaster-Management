@@ -1,63 +1,53 @@
 import { useState, useRef } from 'react';
 import { 
-  RotateCcw, 
   UploadCloud, 
-  Flame, 
-  Waves, 
-  Sprout, 
-  Building2, 
-  AlertOctagon, 
   Zap, 
-  RefreshCw,
-  CheckCircle2
+  Image as ImageIcon,
+  CheckCircle2,
+  SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
+  X
 } from 'lucide-react';
-import { PRECONFIGURED_SCENARIOS } from '../data/sampleDatasets';
 
 export default function MissionControl({ 
   onAnalyze, 
-  isProcessing, 
-  selectedScenario, 
-  setSelectedScenario,
-  onPreImageChange,
-  onPostImageChange,
-  postImageFile
+  isProcessing,
+  imageFile,
+  setImageFile,
+  imagePreview,
+  setImagePreview
 }) {
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [preFileName, setPreFileName] = useState(null);
-  const [postFileName, setPostFileName] = useState(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [assetId, setAssetId] = useState('ASSET-' + Math.floor(1000 + Math.random() * 9000));
+  const [lat, setLat] = useState('19.4326');
+  const [lon, setLon] = useState('-99.1332');
+  const [claimAmount, setClaimAmount] = useState('500000');
+  const [claimDesc, setClaimDesc] = useState('Automated imagery disaster damage analysis');
+  const [fieldReport, setFieldReport] = useState('First responder aerial reconnaissance');
 
-  const preInputRef = useRef(null);
-  const postInputRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  const filteredScenarios = PRECONFIGURED_SCENARIOS.filter(s => {
-    if (categoryFilter === 'ALL') return true;
-    if (categoryFilter === 'SEISMIC') return s.type === 'EARTHQUAKE';
-    if (categoryFilter === 'FLOOD') return s.type === 'FLOOD';
-    if (categoryFilter === 'AGRI') return s.type === 'AGRICULTURE';
-    if (categoryFilter === 'INFRA') return s.type === 'INFRASTRUCTURE';
-    if (categoryFilter === 'EDGE') return s.type === 'FALSE_POSITIVE' || s.type === 'UNCERTAIN' || s.type === 'BASELINE';
-    return true;
-  });
-
-  const handleScenarioTileClick = (scenario) => {
-    setSelectedScenario(scenario);
-    setPreFileName(null);
-    setPostFileName(null);
-  };
-
-  const handlePreFileSelected = (e) => {
+  const handleFileSelected = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      setPreFileName(file.name);
-      if (onPreImageChange) onPreImageChange(file);
+      setImageFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+      // Auto-generate asset ID based on filename if needed
+      setAssetId(file.name.replace(/\.[^/.]+$/, '').toUpperCase().slice(0, 16));
     }
   };
 
-  const handlePostFileSelected = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPostFileName(file.name);
-      if (onPostImageChange) onPostImageChange(file);
+  const [uploadError, setUploadError] = useState(null);
+
+  const handleClearImage = (e) => {
+    e.stopPropagation();
+    setImageFile(null);
+    setImagePreview(null);
+    setUploadError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -68,228 +58,208 @@ export default function MissionControl({
     reader.onerror = (error) => reject(error);
   });
 
-  const handleExecute = async () => {
-    let finalImagePath = selectedScenario.postImage;
-    if (postImageFile) {
-      finalImagePath = await fileToBase64(postImageFile);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setUploadError(null);
+
+    if (!imagePreview && !imageFile) {
+      setUploadError('Please select or upload a disaster image first.');
+      return;
+    }
+
+    let finalImagePath = imagePreview;
+    if (imageFile) {
+      finalImagePath = await fileToBase64(imageFile);
     }
 
     const payload = {
-      asset_id: selectedScenario.asset_id,
-      lat: selectedScenario.lat,
-      lon: selectedScenario.lon,
+      asset_id: assetId.trim() || 'ASSET-001',
+      lat: parseFloat(lat) || 0.0,
+      lon: parseFloat(lon) || 0.0,
       image_path: finalImagePath,
-      claim_desc: selectedScenario.claim_desc,
-      claim_amount: selectedScenario.claim_amount,
-      field_report: selectedScenario.field_report,
+      claim_desc: claimDesc.trim() || 'Disaster image assessment',
+      claim_amount: parseFloat(claimAmount) || 0.0,
+      field_report: fieldReport.trim() || 'Reconnaissance optical survey'
     };
 
     onAnalyze(payload);
   };
 
-  const getCategoryIcon = (type) => {
-    switch (type) {
-      case 'EARTHQUAKE': return <Flame className="h-3.5 w-3.5 text-orange-400" />;
-      case 'FLOOD': return <Waves className="h-3.5 w-3.5 text-cyan-400" />;
-      case 'AGRICULTURE': return <Sprout className="h-3.5 w-3.5 text-emerald-400" />;
-      case 'INFRASTRUCTURE': return <Building2 className="h-3.5 w-3.5 text-blue-400" />;
-      default: return <AlertOctagon className="h-3.5 w-3.5 text-purple-400" />;
-    }
-  };
-
   return (
-    <aside className="rounded-xl border border-slate-800 bg-[#0E1626]/80 p-4 shadow-2xl flex flex-col justify-between space-y-4">
-      <div className="space-y-3.5">
-        {/* Header */}
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-          <span className="rounded bg-orange-950/80 border border-orange-500/60 px-1.5 py-0.5 font-mono text-[11px] font-bold text-orange-400">
-            01
-          </span>
-          <h2 className="font-mono text-xs font-black uppercase tracking-widest text-slate-200">
-            MISSION CONTROL
+    <aside className="rounded-2xl border border-slate-800 bg-[#0E1626]/90 p-5 shadow-2xl flex flex-col space-y-4 font-mono text-xs">
+      
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-orange-500 animate-pulse" />
+          <h2 className="font-bold uppercase tracking-wider text-slate-100 text-sm">
+            01 Image Ingestion
           </h2>
-          <span className="ml-auto text-[10px] font-mono text-slate-400 border border-slate-800 px-2 py-0.5 rounded bg-[#080D18]">
-            {PRECONFIGURED_SCENARIOS.length} Scenarios
-          </span>
         </div>
+        <span className="text-[10px] text-slate-400 bg-[#080D18] border border-slate-800 px-2 py-0.5 rounded">
+          Single File
+        </span>
+      </div>
 
-        {/* Category Filters */}
-        <div>
-          <div className="flex gap-1 overflow-x-auto pb-1 text-[10px] font-mono font-bold">
-            {[
-              { id: 'ALL', label: 'ALL' },
-              { id: 'SEISMIC', label: 'SEISMIC' },
-              { id: 'FLOOD', label: 'FLOOD' },
-              { id: 'AGRI', label: 'CROPS' },
-              { id: 'INFRA', label: 'INFRA' },
-              { id: 'EDGE', label: 'EDGE CASES' }
-            ].map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setCategoryFilter(cat.id)}
-                className={`px-2 py-1 rounded transition cursor-pointer whitespace-nowrap ${
-                  categoryFilter === cat.id
-                    ? 'bg-orange-600 text-white'
-                    : 'bg-slate-900 text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* Main Single Image Upload Zone */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileSelected}
+          className="hidden"
+        />
 
-        {/* Section 1: Pre-Configured Scenarios */}
-        <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
-            {filteredScenarios.map((scenario) => {
-              const isSelected = selectedScenario.id === scenario.id;
-              return (
+        <div
+          onClick={() => fileInputRef.current?.click()}
+          className={`relative border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition flex flex-col items-center justify-center gap-3 ${
+            imageFile 
+              ? 'border-emerald-500/70 bg-emerald-950/20 shadow-lg shadow-emerald-950/30' 
+              : 'border-slate-700 hover:border-orange-500 bg-[#080D18] hover:bg-slate-900/60'
+          }`}
+        >
+          {imagePreview ? (
+            <div className="relative w-full h-44 rounded-xl overflow-hidden border border-slate-700 shadow-inner group">
+              <img 
+                src={imagePreview} 
+                alt="Selected disaster preview" 
+                className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition p-3 text-center">
+                <UploadCloud className="h-6 w-6 text-orange-400 mb-1" />
+                <span className="text-xs text-white font-bold">
+                  Click to choose a different image
+                </span>
+                <span className="text-[10px] text-slate-300">
+                  Replaces active file
+                </span>
+              </div>
+
+              {imageFile && (
                 <button
-                  key={scenario.id}
                   type="button"
-                  onClick={() => handleScenarioTileClick(scenario)}
-                  className={`p-2 rounded-lg border text-left transition-all cursor-pointer flex items-center gap-1.5 ${
-                    isSelected
-                      ? 'border-orange-500 bg-orange-950/30 ring-1 ring-orange-500 shadow-md shadow-orange-950/40'
-                      : 'border-slate-800 bg-[#080D18]/80 hover:border-slate-700 hover:bg-[#080D18]'
-                  }`}
+                  onClick={handleClearImage}
+                  title="Clear file"
+                  className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-rose-600 text-white transition cursor-pointer"
                 >
-                  <div className="shrink-0">
-                    {getCategoryIcon(scenario.type)}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-mono text-[10px] font-bold text-slate-100 truncate">
-                      {scenario.shortLabel}
-                    </p>
-                    <p className="font-mono text-[9px] text-slate-500 truncate">
-                      {scenario.code}
-                    </p>
-                  </div>
+                  <X className="h-3.5 w-3.5" />
                 </button>
-              );
-            })}
-          </div>
-
-          {/* Current Active Scenario Summary */}
-          <div className="rounded-lg border border-slate-800 bg-[#080D18] p-2.5 space-y-1 font-mono text-[10px]">
-            <div className="flex justify-between items-center text-slate-300 font-bold">
-              <span className="truncate">{selectedScenario.label}</span>
-              <span className="text-orange-400 shrink-0 ml-1">{selectedScenario.asset_id}</span>
+              )}
             </div>
-            <p className="text-slate-400 text-[9px] line-clamp-1">{selectedScenario.region} • Pop: {selectedScenario.population_affected}</p>
-          </div>
+          ) : (
+            <div className="py-6 space-y-2">
+              <div className="h-12 w-12 rounded-2xl bg-orange-950/60 border border-orange-500/40 flex items-center justify-center text-orange-400 mx-auto">
+                <UploadCloud className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-200">
+                  Drop your disaster image here, or <span className="text-orange-400 underline">browse</span>
+                </p>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  Supports JPG, PNG, WebP (Satellite, Drone, Aerial, or Ground)
+                </p>
+              </div>
+            </div>
+          )}
 
-          {/* Load Scenario Imagery Button */}
+          {/* Upload confirmation badge */}
+          {imageFile && (
+            <div className="w-full flex items-center justify-between p-2 rounded-xl bg-[#080D18] border border-emerald-500/40 text-[11px]">
+              <div className="flex items-center gap-1.5 text-emerald-300 truncate">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                <span className="truncate">{imageFile.name}</span>
+              </div>
+              <span className="text-[10px] text-slate-400 shrink-0 ml-2">
+                {(imageFile.size / 1024).toFixed(0)} KB
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Upload error banner */}
+        {uploadError && (
+          <div className="p-2.5 rounded-xl bg-rose-950/70 border border-rose-500/50 text-rose-300 text-[11px] text-center font-bold">
+            ⚠️ {uploadError}
+          </div>
+        )}
+
+        {/* Primary Action Button */}
+        <button
+          type="submit"
+          disabled={isProcessing}
+          className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-orange-600 via-amber-600 to-orange-600 hover:from-orange-500 hover:to-amber-500 text-white font-black tracking-wide text-xs shadow-xl shadow-orange-950/60 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Zap className={`h-4 w-4 ${isProcessing ? 'animate-spin' : ''}`} />
+          <span>{isProcessing ? 'ANALYZING VIA MULTI-AGENT ENGINE...' : 'EXECUTE ASSESSMENT'}</span>
+        </button>
+
+        {/* Optional Collapsible Advanced Parameters */}
+        <div className="pt-2 border-t border-slate-800/80">
           <button
             type="button"
-            onClick={() => {
-              setPreFileName(null);
-              setPostFileName(null);
-            }}
-            className="w-full flex items-center justify-center gap-2 rounded-lg border border-slate-700/60 bg-[#0B1220] py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:border-slate-500 transition cursor-pointer"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="w-full flex items-center justify-between text-[11px] text-slate-400 hover:text-slate-200 py-1 transition cursor-pointer"
           >
-            <RotateCcw className="h-3 w-3 text-slate-400" />
-            <span>Reload Scenario Feeds</span>
+            <span className="flex items-center gap-1.5">
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              <span>Advanced Geolocation & Metadata (Optional)</span>
+            </span>
+            {showAdvanced ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
           </button>
-        </div>
 
-        {/* Section 2: Upload Custom Imagery */}
-        <div className="space-y-2 pt-2 border-t border-slate-800/80">
-          <label className="block font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            OR UPLOAD CUSTOM IMAGERY
-          </label>
+          {showAdvanced && (
+            <div className="mt-3 space-y-2.5 p-3 rounded-xl bg-[#080D18] border border-slate-800">
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase text-slate-500 block">Asset Tag</label>
+                <input
+                  type="text"
+                  value={assetId}
+                  onChange={(e) => setAssetId(e.target.value)}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-slate-200 focus:border-orange-500 focus:outline-none"
+                />
+              </div>
 
-          {/* Drag and Drop Zone */}
-          <div 
-            onClick={() => postInputRef.current?.click()}
-            className="rounded-xl border border-dashed border-slate-700/80 bg-[#080D18]/60 p-3 text-center cursor-pointer hover:border-orange-500/60 hover:bg-[#080D18] transition flex flex-col items-center justify-center gap-1"
-          >
-            <UploadCloud className="h-5 w-5 text-blue-400" />
-            <p className="text-[11px] font-semibold text-slate-200">
-              Drag & drop before / after imagery
-            </p>
-            <p className="text-[9px] text-slate-500 font-mono">
-              PNG, JPG, WebP (up to 15MB)
-            </p>
-          </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase text-slate-500 block">Lat</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={lat}
+                    onChange={(e) => setLat(e.target.value)}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-slate-200 focus:border-orange-500 focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase text-slate-500 block">Lon</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={lon}
+                    onChange={(e) => setLon(e.target.value)}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-slate-200 focus:border-orange-500 focus:outline-none"
+                  />
+                </div>
+              </div>
 
-          {/* Pre-Disaster Baseline */}
-          <div className="space-y-0.5">
-            <label className="block font-mono text-[9px] font-bold uppercase tracking-widest text-slate-500">
-              PRE-DISASTER BASELINE
-            </label>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => preInputRef.current?.click()}
-                className="shrink-0 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-200 transition cursor-pointer"
-              >
-                Browse Pre
-              </button>
-              <span className="text-[11px] text-slate-400 font-mono truncate">
-                {preFileName || 'Select baseline image...'}
-              </span>
-              <input 
-                ref={preInputRef} 
-                type="file" 
-                accept="image/*" 
-                className="hidden" 
-                onChange={handlePreFileSelected} 
-              />
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase text-slate-500 block">Claim Estimate ($)</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={claimAmount}
+                  onChange={(e) => setClaimAmount(e.target.value)}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-slate-200 focus:border-orange-500 focus:outline-none"
+                />
+              </div>
             </div>
-          </div>
-
-          {/* Post-Disaster Capture */}
-          <div className="space-y-0.5">
-            <label className="block font-mono text-[9px] font-bold uppercase tracking-widest text-slate-500">
-              POST-DISASTER CAPTURE
-            </label>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => postInputRef.current?.click()}
-                className="shrink-0 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-200 transition cursor-pointer"
-              >
-                Browse Post
-              </button>
-              <span className="text-[11px] text-slate-400 font-mono truncate">
-                {postFileName || 'Select post image...'}
-              </span>
-              <input 
-                ref={postInputRef} 
-                type="file" 
-                accept="image/*" 
-                className="hidden" 
-                onChange={handlePostFileSelected} 
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Primary Action Button */}
-      <div className="pt-2">
-        <button
-          type="button"
-          onClick={handleExecute}
-          disabled={isProcessing}
-          className="w-full rounded-xl bg-gradient-to-r from-orange-600 via-red-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 py-3 text-xs font-mono font-black uppercase tracking-wider text-white shadow-xl shadow-orange-950/60 transition-all border border-orange-400/40 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-        >
-          {isProcessing ? (
-            <>
-              <RefreshCw className="h-4 w-4 animate-spin text-white" />
-              <span>Analyzing Disaster Feed...</span>
-            </>
-          ) : (
-            <>
-              <Zap className="h-4 w-4 text-amber-200" />
-              <span>⌘ Execute AI Damage Assessment</span>
-            </>
           )}
-        </button>
-      </div>
+        </div>
+
+      </form>
+
     </aside>
   );
 }
