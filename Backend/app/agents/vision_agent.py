@@ -58,8 +58,18 @@ def analyze_images(request: VisionAgentRequest) -> VisionAgentResponse:
         contents=[prompt, img],
         config={'response_mime_type': 'application/json'}
     )
-    
+        
     text = response.text
-
-    data = json.loads(text)
+    
+    # Strip markdown if present
+    if "```json" in text:
+        text = text.split("```json")[1].split("```")[0].strip()
+    elif "```" in text:
+        text = text.split("```")[1].strip()
+        
+    try:
+        data = json.loads(text)
+    except Exception as e:
+        print(f"Failed to parse JSON. Raw text was: {text}")
+        raise e
     return VisionAgentResponse(**data)

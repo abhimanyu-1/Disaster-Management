@@ -33,7 +33,6 @@ def run_workflow(request) -> FinalAssessment:
         image_path=request.image_path,
         rough_bbox=vision_resp.bounding_box
     ))
-    vision_resp.bounding_box = sam_resp.refined_bbox
     print(f"SAM AGENT OUTPUT: {sam_resp.model_dump_json(indent=2)}")
     
     # 3. Geo Agent
@@ -93,7 +92,7 @@ def run_workflow(request) -> FinalAssessment:
             damage_score=round(vision_resp.damage_score, 3),
             confidence=round(vision_resp.confidence, 3),
             evidence=vision_resp.evidence,
-            bounding_box=vision_resp.bounding_box
+            bounding_boxes=sam_resp.refined_bboxes
         ),
         geo_context=GeoAssessment(
             population_affected=geo_resp.population_affected,
