@@ -1,6 +1,14 @@
 from pydantic import BaseModel
 from typing import List
 
+class SamAgentRequest(BaseModel):
+    image_path: str
+    rough_bbox: List[int]
+
+class SamAgentResponse(BaseModel):
+    refined_bbox: List[int]
+
+
 class VisionAgentRequest(BaseModel):
     image_path: str
     asset_id: str

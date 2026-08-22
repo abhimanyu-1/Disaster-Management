@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .api import assessment
-from .database import init_db
 
 app = FastAPI(title="Disaster Assessment API")
 
@@ -13,9 +12,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.on_event("startup")
-def on_startup():
-    init_db()
+
 
 app.include_router(assessment.router, prefix="/api")
 

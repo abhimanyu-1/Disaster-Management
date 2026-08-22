@@ -6,14 +6,14 @@ from ..schemas.assessment import (
 )
 from ..schemas.agent import (
     VisionAgentRequest, GeoAgentRequest, 
-    ClaimAgentRequest, PriorityAgentRequest, VerificationAgentRequest
+    ClaimAgentRequest, PriorityAgentRequest, VerificationAgentRequest, SamAgentRequest
 )
 from ..agents.vision_agent import analyze_images
+from ..agents.sam_agent import run_sam_inference
 from ..agents.geo_agent import get_context
 from ..agents.claim_agent import analyze_claim
 from ..agents.priority_agent import calculate_priority
 from ..agents.verification_agent import check_verification
-from ..database import log_audit_event, save_assessment
 
 def run_workflow(request) -> FinalAssessment:
     asset_id = request.asset_id
@@ -26,7 +26,15 @@ def run_workflow(request) -> FinalAssessment:
         asset_id=asset_id
     ))
     print(f"VISION AGENT OUTPUT: {vision_resp.model_dump_json(indent=2)}")
-    log_audit_event(asset_id, "VISION_COMPLETED", f"Damage score: {vision_resp.damage_score}")
+    
+    # 2. SAM Agent (Refining Bounding Box)
+    print(f"\n[{assessment_id}] === 2. RUNNING SAM AGENT ===")
+    sam_resp = run_sam_inference(SamAgentRequest(
+        image_path=request.image_path,
+        rough_bbox=vision_resp.bounding_box
+    ))
+    vision_resp.bounding_box = sam_resp.refined_bbox
+    print(f"SAM AGENT OUTPUT: {sam_resp.model_dump_json(indent=2)}")
     
     # 3. Geo Agent
     print(f"\n[{assessment_id}] === 3. RUNNING GEO AGENT ===")
@@ -35,7 +43,6 @@ def run_workflow(request) -> FinalAssessment:
         lon=request.lon
     ))
     print(f"GEO AGENT OUTPUT: {geo_resp.model_dump_json(indent=2)}")
-    log_audit_event(asset_id, "GEO_CONTEXT_RETRIEVED", f"Population: {geo_resp.population_affected}")
     
     # 4. Assessment Engine
     severity_score = vision_resp.damage_score
@@ -54,7 +61,6 @@ def run_workflow(request) -> FinalAssessment:
         claim_desc=request.claim_desc
     ))
     print(f"CLAIM AGENT OUTPUT: {claim_resp.model_dump_json(indent=2)}")
-    log_audit_event(asset_id, "CLAIM_ANALYSIS_COMPLETED", f"Claim risk: {claim_resp.claim_risk}")
     
     # 6. Priority Agent
     print(f"\n[{assessment_id}] === 5. RUNNING PRIORITY AGENT ===")
@@ -66,7 +72,6 @@ def run_workflow(request) -> FinalAssessment:
         claim_risk=claim_resp.claim_risk
     ))
     print(f"PRIORITY AGENT OUTPUT: {priority_resp.model_dump_json(indent=2)}")
-    log_audit_event(asset_id, "PRIORITY_CALCULATED", f"Priority: {priority_resp.priority_level}")
     
     # 7. Verification Agent
     print(f"\n[{assessment_id}] === 6. RUNNING VERIFICATION AGENT ===")
@@ -76,7 +81,6 @@ def run_workflow(request) -> FinalAssessment:
         evidence_agreement="HIGH" if claim_resp.is_consistent else "LOW"
     ))
     print(f"VERIFICATION AGENT OUTPUT: {verification_resp.model_dump_json(indent=2)}\n")
-    log_audit_event(asset_id, "VERIFICATION_COMPLETED", f"Action: {verification_resp.action}")
     
     status = "REVIEW_REQUIRED" if verification_resp.verification_required else "AUTO_APPROVED"
     
@@ -117,7 +121,5 @@ def run_workflow(request) -> FinalAssessment:
             recommended_action=verification_resp.action
         )
     )
-    
-    save_assessment(assessment_id, asset_id, final_assessment.model_dump())
     
     return final_assessment
