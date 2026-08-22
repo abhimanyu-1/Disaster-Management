@@ -142,3 +142,24 @@ def get_dashboard_stats() -> dict:
         "human_reviews": human_reviews,
         "priority_queue": recent
     }
+
+def get_audit_logs(limit: int = 50) -> list:
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, asset_id, event_type, details, timestamp FROM audit_logs ORDER BY id DESC LIMIT ?", (limit,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [
+            {
+                "id": r[0],
+                "asset_id": r[1],
+                "event_type": r[2],
+                "details": r[3],
+                "timestamp": r[4]
+            }
+            for r in rows
+        ]
+    except Exception as e:
+        print(f"Failed to get audit logs: {e}")
+        return []
