@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException
 from ..schemas.assessment import AssessmentJobRequest, FinalAssessment, VerificationUpdateRequest
 from ..agents.orchestrator import run_assessment_job
+import base64
+import os
 
 router = APIRouter()
 
-import base64
-import os
 
 @router.post("/assessments", response_model=FinalAssessment)
 def create_assessment(request: AssessmentJobRequest):
@@ -25,3 +25,14 @@ def create_assessment(request: AssessmentJobRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/feed-status")
+def feed_status():
+    return {
+        "feeds": [
+            {"name": "USGS Global ShakeMap Feeds", "type": "Seismic Ingestion", "status": "ONLINE", "latency": "42ms"},
+            {"name": "Copernicus Sentinel-2 Optical", "type": "Satellite SAR/Optical", "status": "ONLINE", "latency": "120ms"},
+            {"name": "Maxar OpenData Disaster Fleet", "type": "High-Res Aerial Nadir", "status": "ONLINE", "latency": "85ms"},
+            {"name": "NOAA NWS Flash Flood Advisories", "type": "Hydrological Feeds", "status": "ONLINE", "latency": "60ms"},
+            {"name": "Tactical UAV / Drone RTMP Stream", "type": "Local Low-Altitude", "status": "STANDBY", "latency": "18ms"}
+        ]
+    }
