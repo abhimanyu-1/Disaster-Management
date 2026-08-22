@@ -3,10 +3,10 @@ from typing import List
 
 class SamAgentRequest(BaseModel):
     image_path: str
-    rough_bbox: List[int]
+    rough_bbox: List[float]
 
 class SamAgentResponse(BaseModel):
-    refined_bbox: List[int]
+    refined_bbox: List[float]
 
 
 class VisionAgentRequest(BaseModel):
@@ -20,7 +20,7 @@ class VisionAgentResponse(BaseModel):
     damage_score: float
     confidence: float
     evidence: List[str]
-    bounding_box: List[int]
+    bounding_box: List[float]
 
 
 class GeoAgentRequest(BaseModel):

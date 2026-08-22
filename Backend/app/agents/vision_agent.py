@@ -55,14 +55,11 @@ def analyze_images(request: VisionAgentRequest) -> VisionAgentResponse:
     
     response = client.models.generate_content(
         model='gemini-2.5-flash',
-        contents=[prompt, img]
+        contents=[prompt, img],
+        config={'response_mime_type': 'application/json'}
     )
     
     text = response.text
-    if "```json" in text:
-        text = text.split("```json")[1].split("```")[0].strip()
-    elif "```" in text:
-        text = text.split("```")[1].strip()
-        
+
     data = json.loads(text)
     return VisionAgentResponse(**data)
