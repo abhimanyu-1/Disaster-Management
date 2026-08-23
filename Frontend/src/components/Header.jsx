@@ -3,8 +3,8 @@ import {
   Settings, 
   Check, 
   RefreshCw,
-  Activity,
-  Radio
+  FileDown,
+  ChevronDown
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -12,9 +12,13 @@ export default function Header({
   backendStatus, 
   onRefresh, 
   isRefreshing, 
-  onStatusChange 
+  onStatusChange,
+  currentAssessment,
+  onDownloadReport,
+  isDownloading
 }) {
   const [showConfig, setShowConfig] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [apiUrl, setApiUrl] = useState(api.getBaseUrl());
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -56,6 +60,68 @@ export default function Header({
 
         {/* Status Indicators & Controls */}
         <div className="flex items-center gap-2.5 text-xs font-mono">
+          
+          {/* Download Official Report Button (Visible when assessment is loaded) */}
+          {currentAssessment && (
+            <div className="relative">
+              <div className="flex items-center rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 shadow-lg shadow-orange-950/50 border border-orange-400/40">
+                <button
+                  onClick={() => onDownloadReport && onDownloadReport('pdf')}
+                  disabled={isDownloading}
+                  className="px-3 py-1.5 font-bold text-white flex items-center gap-1.5 hover:from-orange-500 hover:to-amber-500 transition cursor-pointer disabled:opacity-50"
+                  title="Download Official Assessment PDF"
+                >
+                  <FileDown className={`h-3.5 w-3.5 ${isDownloading ? 'animate-bounce' : ''}`} />
+                  <span>{isDownloading ? 'Downloading...' : 'Download PDF Dossier'}</span>
+                </button>
+
+                <button
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  className="px-1.5 py-1.5 border-l border-orange-500/50 hover:bg-orange-500/30 text-white transition cursor-pointer"
+                  title="More Formats"
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {/* Dropdown for other formats */}
+              {showExportMenu && (
+                <div className="absolute right-0 mt-1.5 w-44 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1 z-50 text-[11px]">
+                  <button
+                    onClick={() => {
+                      setShowExportMenu(false);
+                      onDownloadReport('pdf');
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-800 text-slate-200 font-bold transition flex items-center justify-between cursor-pointer"
+                  >
+                    <span>Official PDF</span>
+                    <span className="text-[9px] text-orange-400 font-mono">.pdf</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowExportMenu(false);
+                      onDownloadReport('json');
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-800 text-slate-200 transition flex items-center justify-between cursor-pointer"
+                  >
+                    <span>Raw JSON Data</span>
+                    <span className="text-[9px] text-cyan-400 font-mono">.json</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowExportMenu(false);
+                      onDownloadReport('markdown');
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-800 text-slate-200 transition flex items-center justify-between cursor-pointer"
+                  >
+                    <span>Markdown Doc</span>
+                    <span className="text-[9px] text-emerald-400 font-mono">.md</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Live Backend Connection Indicator */}
           <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-[#080D18] px-3 py-1.5">
             <span className="text-[10px] font-bold text-slate-500">API BACKEND:</span>
@@ -114,7 +180,7 @@ export default function Header({
             <div className="flex items-end gap-2 w-full sm:w-auto mt-2 sm:mt-0">
               <button 
                 type="submit"
-                className="rounded-xl bg-orange-600 hover:bg-orange-500 px-4 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5"
+                className="rounded-xl bg-orange-600 hover:bg-orange-500 px-4 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5 cursor-pointer"
               >
                 {savedSuccess ? <Check className="h-3.5 w-3.5" /> : null}
                 {savedSuccess ? 'Saved!' : 'Save'}
@@ -122,7 +188,7 @@ export default function Header({
               <button 
                 type="button"
                 onClick={() => setShowConfig(false)}
-                className="rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-1.5 text-xs text-slate-400 hover:text-white"
+                className="rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-1.5 text-xs text-slate-400 hover:text-white cursor-pointer"
               >
                 Close
               </button>

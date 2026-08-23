@@ -11,13 +11,16 @@ import {
   CheckCircle2,
   AlertOctagon,
   Building2,
-  FileCheck
+  FileCheck,
+  FileDown
 } from 'lucide-react';
 
 export default function CrisisSeverityIndex({ 
   assessment, 
   inferenceTime,
-  onVerificationUpdated
+  onVerificationUpdated,
+  onDownloadReport,
+  isDownloading
 }) {
   const [localStatus, setLocalStatus] = useState(null);
   const [feedback, setFeedback] = useState(null);
@@ -168,7 +171,7 @@ export default function CrisisSeverityIndex({
 
       {/* Human-In-The-Loop Dispatch Console */}
       {assessment && (
-        <div className="pt-2 border-t border-slate-800 space-y-2">
+        <div className="pt-2 border-t border-slate-800 space-y-2.5">
           <div className="flex justify-between items-center text-[10px] font-bold text-slate-400">
             <span>HITL DISPATCH ACTIONS</span>
             <span className="text-orange-400 font-mono">{currentStatus}</span>
@@ -197,6 +200,18 @@ export default function CrisisSeverityIndex({
             >
               <XCircle className="h-3.5 w-3.5" />
               <span>Reject</span>
+            </button>
+          </div>
+
+          {/* Download Report Action Bar */}
+          <div className="pt-1">
+            <button
+              onClick={() => onDownloadReport && onDownloadReport('pdf')}
+              disabled={isDownloading}
+              className="w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-orange-500/40 text-orange-300 hover:text-white font-bold transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              <FileDown className={`h-3.5 w-3.5 ${isDownloading ? 'animate-bounce' : ''}`} />
+              <span>{isDownloading ? 'Generating Report...' : 'Download Official PDF Report'}</span>
             </button>
           </div>
 

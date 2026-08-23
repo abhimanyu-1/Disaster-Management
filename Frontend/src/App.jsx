@@ -95,6 +95,25 @@ export default function App() {
     }
   };
 
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownloadReport = async (format = 'pdf') => {
+    if (!currentAssessment) {
+      addToast('error', 'No active assessment to download report for.');
+      return;
+    }
+    setIsDownloading(true);
+    try {
+      await api.downloadReport(currentAssessment, format);
+      addToast('success', `Official Assessment Report (${format.toUpperCase()}) downloaded successfully!`);
+    } catch (err) {
+      console.error('Report download failed:', err);
+      addToast('error', `Report download failed: ${err.message}`);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[#070B13] text-slate-100 p-3 sm:p-4 lg:p-5 font-sans selection:bg-orange-500 selection:text-white">
       <div className="mx-auto max-w-[1920px] space-y-4">
@@ -105,6 +124,9 @@ export default function App() {
           onRefresh={checkHealth}
           isRefreshing={isRefreshing}
           onStatusChange={setBackendStatus}
+          currentAssessment={currentAssessment}
+          onDownloadReport={handleDownloadReport}
+          isDownloading={isDownloading}
         />
 
         {/* 3-Column Mission Dashboard */}
@@ -133,7 +155,11 @@ export default function App() {
             />
 
             {/* Bottom Multi-Agent Telemetry Log */}
-            <AgentPipeline assessment={currentAssessment} />
+            <AgentPipeline 
+              assessment={currentAssessment} 
+              onDownloadReport={handleDownloadReport}
+              isDownloading={isDownloading}
+            />
           </div>
 
           {/* Right Column: 03 Crisis Severity Index & HITL Actions */}
@@ -142,6 +168,8 @@ export default function App() {
               assessment={currentAssessment}
               inferenceTime={inferenceTime}
               onVerificationUpdated={handleVerificationUpdated}
+              onDownloadReport={handleDownloadReport}
+              isDownloading={isDownloading}
             />
           </div>
 

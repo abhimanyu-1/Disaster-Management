@@ -9,3 +9,4 @@ python-dotenv
 torch
 torchvision
 transformers
+reportlab

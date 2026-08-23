@@ -12,7 +12,7 @@ import {
   Crosshair
 } from 'lucide-react';
 
-export default function AgentPipeline({ assessment }) {
+export default function AgentPipeline({ assessment, onDownloadReport, isDownloading }) {
   if (!assessment) {
     return (
       <div className="rounded-2xl border border-slate-800 bg-[#0E1626]/60 p-6 text-center font-mono">
@@ -46,9 +46,20 @@ export default function AgentPipeline({ assessment }) {
             Multi-Agent Telemetry & Decision Tree
           </h3>
         </div>
-        <span className="text-[10px] bg-slate-900 text-slate-400 border border-slate-800 px-2.5 py-0.5 rounded">
-          ID: {assessment.assessment_id}
-        </span>
+        <div className="flex items-center gap-2">
+          {onDownloadReport && (
+            <button
+              onClick={() => onDownloadReport('pdf')}
+              disabled={isDownloading}
+              className="text-[10px] bg-orange-950/60 hover:bg-orange-900 border border-orange-500/40 text-orange-300 px-2 py-0.5 rounded font-bold transition cursor-pointer"
+            >
+              Export PDF
+            </button>
+          )}
+          <span className="text-[10px] bg-slate-900 text-slate-400 border border-slate-800 px-2.5 py-0.5 rounded">
+            ID: {assessment.assessment_id}
+          </span>
+        </div>
       </div>
 
       {/* Grid of 6 Real Backend Agent Cards */}

@@ -77,14 +77,34 @@ export class ApiService {
     return await res.json();
   }
 
-  async getAuditLogs(limit = 50) {
-    try {
-      const res = await fetch(`${this.baseUrl}/api/audit-logs?limit=${limit}`);
-      if (!res.ok) return [];
-      return await res.json();
-    } catch {
-      return [];
+  async downloadReport(assessment, format = 'pdf') {
+    const res = await fetch(`${this.baseUrl}/api/assessments/report?format=${encodeURIComponent(format)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(assessment),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || `Report download failed: HTTP ${res.status}`);
     }
+    const blob = await res.blob();
+    const filename = format === 'pdf' 
+      ? `Disaster_Assessment_${assessment.assessment_id}.pdf`
+      : format === 'json'
+      ? `Disaster_Assessment_${assessment.assessment_id}.json`
+      : `Disaster_Assessment_${assessment.assessment_id}.md`;
+
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
   }
 }
 
