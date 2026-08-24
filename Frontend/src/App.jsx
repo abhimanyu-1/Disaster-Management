@@ -74,16 +74,22 @@ export default function App() {
     }
   };
 
-  const handleVerificationUpdated = (newStatus) => {
+  const handleVerificationUpdated = async (newStatus) => {
     if (currentAssessment) {
-      setCurrentAssessment(prev => ({
-        ...prev,
-        final_decision: {
-          ...prev.final_decision,
-          status: newStatus
-        }
-      }));
-      addToast('success', `HITL verification decision recorded: ${newStatus}`);
+      try {
+        await api.updateVerification(currentAssessment.assessment_id, newStatus);
+        setCurrentAssessment(prev => ({
+          ...prev,
+          final_decision: {
+            ...prev.final_decision,
+            status: newStatus
+          }
+        }));
+        addToast('success', `HITL verification decision recorded: ${newStatus}`);
+      } catch (err) {
+        console.error('Failed to update verification:', err);
+        addToast('error', `Failed to update status: ${err.message}`);
+      }
     }
   };
 

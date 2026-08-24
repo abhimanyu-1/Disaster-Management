@@ -86,6 +86,7 @@ def run_workflow(request) -> FinalAssessment:
     # Assembly
     final_assessment = FinalAssessment(
         assessment_id=assessment_id,
+        image_path=request.image_path,
         vision=VisionAssessment(
             damage_detected=vision_resp.damage_detected,
             damage_type=vision_resp.damage_type,

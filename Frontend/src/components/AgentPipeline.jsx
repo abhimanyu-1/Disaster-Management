@@ -9,7 +9,8 @@ import {
   AlertTriangle,
   Zap,
   Bot,
-  Crosshair
+  Crosshair,
+  Download
 } from 'lucide-react';
 
 export default function AgentPipeline({ assessment }) {
@@ -46,9 +47,20 @@ export default function AgentPipeline({ assessment }) {
             Multi-Agent Telemetry & Decision Tree
           </h3>
         </div>
-        <span className="text-[10px] bg-slate-900 text-slate-400 border border-slate-800 px-2.5 py-0.5 rounded">
-          ID: {assessment.assessment_id}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] bg-slate-900 text-slate-400 border border-slate-800 px-2.5 py-0.5 rounded">
+            ID: {assessment.assessment_id}
+          </span>
+          <a
+            href={`http://localhost:8000/api/assessments/${assessment.assessment_id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-[10px] bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded hover:bg-emerald-900/80 transition-colors font-bold tracking-wider"
+          >
+            <Download className="h-3 w-3" />
+            EXPORT PDF
+          </a>
+        </div>
       </div>
 
       {/* Grid of 6 Real Backend Agent Cards */}
@@ -135,7 +147,7 @@ export default function AgentPipeline({ assessment }) {
               <div className="p-2 rounded-lg bg-[#080D18] border border-slate-800 text-[10px] space-y-0.5">
                 <span className="text-slate-500 block uppercase font-bold">Bounding Coordinates [0..1000]</span>
                 <p className="font-mono text-cyan-300">
-                  [{vision.bounding_box ? vision.bounding_box.map(n => Math.round(n)).join(', ') : '0, 0, 0, 0'}]
+                  [{vision.bounding_boxes && vision.bounding_boxes.length > 0 ? vision.bounding_boxes[0].map(n => Math.round(n)).join(', ') : '0, 0, 0, 0'}]
                 </p>
               </div>
 

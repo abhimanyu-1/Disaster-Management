@@ -37,6 +37,7 @@ class FinalDecision(BaseModel):
 
 class FinalAssessment(BaseModel):
     assessment_id: str
+    image_path: str = None
     vision: VisionAssessment
     geo_context: GeoAssessment
     assessment: SeverityAssessment

@@ -11,3 +11,4 @@ torchvision
 transformers
 pytest
 httpx
+reportlab
