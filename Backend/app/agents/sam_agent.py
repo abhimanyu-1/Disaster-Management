@@ -73,11 +73,12 @@ def run_sam_inference(request: SamAgentRequest) -> SamAgentResponse:
         inputs["reshaped_input_sizes"].cpu()
     )
     
-    # Take the first mask (SAM predicts multiple masks, often 3. The first one is a good default or we could take the one with the highest iou score)
-    # output masks is a list of tensors
-    # masks[0] shape: (1, 3, H, W)
-    # We take the first predicted mask (index 0 out of 3)
-    best_mask = masks[0][0][0].numpy()
+    # Pick the mask with the highest IoU score predicted by the model
+    iou_scores = outputs.iou_scores.cpu().numpy()[0][0]  # shape: (3,)
+    best_mask_idx = np.argmax(iou_scores)
+    
+    # output masks is a list of tensors, masks[0] shape: (1, 3, H, W)
+    best_mask = masks[0][0][best_mask_idx].numpy()
     
     # Use cv2 to find distinct regions
     import cv2
