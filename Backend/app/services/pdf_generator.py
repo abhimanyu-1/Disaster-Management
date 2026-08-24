@@ -46,7 +46,7 @@ def draw_header_footer(canvas, doc):
     # Header
     canvas.setFont('Helvetica-Bold', 10)
     canvas.setFillColor(colors.HexColor("#334155"))
-    canvas.drawString(40, 760, "DISASTER-IQ ENTERPRISE PLATFORM")
+    canvas.drawString(40, 760, "DISASTER MANAGEMENT ENTERPRISE PLATFORM")
     
     canvas.setFont('Helvetica', 9)
     canvas.setFillColor(colors.HexColor("#64748b"))

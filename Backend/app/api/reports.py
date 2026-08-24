@@ -51,5 +51,5 @@ def download_assessment_pdf(assessment_id: str):
     return StreamingResponse(
         pdf_buffer, 
         media_type="application/pdf", 
-        headers={"Content-Disposition": f"attachment; filename=DisasterIQ_{assessment_id}.pdf"}
+        headers={"Content-Disposition": f"attachment; filename=DisasterManagement_{assessment_id}.pdf"}
     )

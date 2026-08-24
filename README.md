@@ -1,4 +1,4 @@
-# DisasterIQ — Enterprise Disaster Intelligence & Multi-Agent EOC Platform
+# Disaster Management — Enterprise Disaster Intelligence & Multi-Agent EOC Platform
 
 An enterprise-grade, multimodal AI orchestration platform for rapid disaster reconnaissance, damage severity classification, geospatial operations, insurance/relief claims triage, and Human-in-the-Loop (HITL) verification.
 
@@ -6,7 +6,7 @@ An enterprise-grade, multimodal AI orchestration platform for rapid disaster rec
 
 ## 🏗️ Architecture: Multi-Agent Orchestration Pipeline
 
-DisasterIQ operates on a sequential **Multi-Agent Orchestration Pipeline**. When a disaster assessment request is submitted, it triggers the central orchestrator (`disaster_workflow.py`), which coordinates a chain of six specialized AI agents. 
+Disaster Management operates on a sequential **Multi-Agent Orchestration Pipeline**. When a disaster assessment request is submitted, it triggers the central orchestrator (`disaster_workflow.py`), which coordinates a chain of six specialized AI agents. 
 
 ![Multi-Agent Orchestration Workflow](./Workflow.png)
 
