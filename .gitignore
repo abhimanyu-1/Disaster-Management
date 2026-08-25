@@ -33,3 +33,6 @@ data/
 .vscode/
 .idea/
 .DS_Store
+
+# Agent Frameworks
+.agents/
