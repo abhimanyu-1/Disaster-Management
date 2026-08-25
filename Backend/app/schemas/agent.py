@@ -24,6 +24,7 @@ class VisionAgentResponse(BaseModel):
 
 
 class GeoAgentRequest(BaseModel):
+    image_path: str
     lat: float
     lon: float
 

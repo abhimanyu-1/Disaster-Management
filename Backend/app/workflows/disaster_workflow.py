@@ -1,4 +1,5 @@
 import uuid
+import time
 from ..schemas.assessment import (
     FinalAssessment, VisionAssessment, GeoAssessment, 
     SeverityAssessment, ClaimAssessment, PriorityAssessment, 
@@ -27,6 +28,8 @@ def run_workflow(request) -> FinalAssessment:
     ))
     print(f"VISION AGENT OUTPUT: {vision_resp.model_dump_json(indent=2)}")
     
+    time.sleep(2)  # Delay to prevent 429 Too Many Requests on free tier
+    
     # 2. SAM Agent (Refining Bounding Box)
     print(f"\n[{assessment_id}] === 2. RUNNING SAM AGENT ===")
     sam_resp = run_sam_inference(SamAgentRequest(
@@ -35,13 +38,18 @@ def run_workflow(request) -> FinalAssessment:
     ))
     print(f"SAM AGENT OUTPUT: {sam_resp.model_dump_json(indent=2)}")
     
+    time.sleep(2)  # Delay to prevent 429
+    
     # 3. Geo Agent
     print(f"\n[{assessment_id}] === 3. RUNNING GEO AGENT ===")
     geo_resp = get_context(GeoAgentRequest(
+        image_path=request.image_path,
         lat=request.lat,
         lon=request.lon
     ))
     print(f"GEO AGENT OUTPUT: {geo_resp.model_dump_json(indent=2)}")
+    
+    time.sleep(2)  # Delay to prevent 429
     
     # 4. Assessment Engine
     severity_score = vision_resp.damage_score
@@ -61,6 +69,8 @@ def run_workflow(request) -> FinalAssessment:
     ))
     print(f"CLAIM AGENT OUTPUT: {claim_resp.model_dump_json(indent=2)}")
     
+    time.sleep(2)  # Delay to prevent 429
+    
     # 6. Priority Agent
     print(f"\n[{assessment_id}] === 5. RUNNING PRIORITY AGENT ===")
     priority_resp = calculate_priority(PriorityAgentRequest(
@@ -71,6 +81,8 @@ def run_workflow(request) -> FinalAssessment:
         claim_risk=claim_resp.claim_risk
     ))
     print(f"PRIORITY AGENT OUTPUT: {priority_resp.model_dump_json(indent=2)}")
+    
+    time.sleep(2)  # Delay to prevent 429
     
     # 7. Verification Agent
     print(f"\n[{assessment_id}] === 6. RUNNING VERIFICATION AGENT ===")

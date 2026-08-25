@@ -2,6 +2,7 @@ import os
 from google import genai
 import json
 from ..schemas.agent import ClaimAgentRequest, ClaimAgentResponse
+from ..config import GEMINI_MODEL
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -27,7 +28,7 @@ def analyze_claim(request: ClaimAgentRequest) -> ClaimAgentResponse:
     """
     
     response = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model=GEMINI_MODEL,
         contents=prompt
     )
     

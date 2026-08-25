@@ -1,6 +1,7 @@
 import os
 from google import genai
 from ..schemas.agent import PriorityAgentRequest, PriorityAgentResponse
+from ..config import GEMINI_MODEL
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,7 +20,7 @@ def calculate_priority(request: PriorityAgentRequest) -> PriorityAgentResponse:
     prompt = f"Explain in one short sentence why an asset with damage severity {request.severity_score:.2f}, criticality {request.criticality:.2f}, and {request.population_affected} affected people got a priority score of {score:.2f} ({level}). Keep it brief."
     
     response = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model=GEMINI_MODEL,
         contents=prompt
     )
     explanation = response.text.strip()
