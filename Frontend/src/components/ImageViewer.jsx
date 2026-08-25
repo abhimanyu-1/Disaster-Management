@@ -15,6 +15,7 @@ export default function ImageViewer({
 }) {
   const [editableBoxes, setEditableBoxes] = useState([]);
   const [dragState, setDragState] = useState({ mode: 'none' });
+  const [sliderValue, setSliderValue] = useState(50);
   const containerRef = useRef(null);
 
   // Initialize editable boxes when assessment finishes
@@ -83,6 +84,13 @@ export default function ImageViewer({
     containerRef.current?.setPointerCapture(e.pointerId);
   };
 
+  const handleSliderPointerDown = (e) => {
+    e.stopPropagation();
+    if (isProcessing) return;
+    setDragState({ mode: 'slider' });
+    containerRef.current?.setPointerCapture(e.pointerId);
+  };
+
   const handlePointerMove = (e) => {
     if (dragState.mode === 'none') return;
     const { x, y } = getCoords(e);
@@ -127,6 +135,9 @@ export default function ImageViewer({
       const newBoxes = [...editableBoxes];
       newBoxes[dragState.boxIndex] = box;
       setEditableBoxes(newBoxes);
+    }
+    else if (dragState.mode === 'slider') {
+      setSliderValue(x / 10);
     }
   };
 
@@ -223,71 +234,108 @@ export default function ImageViewer({
       >
         {imageUrl ? (
           <>
+            {/* Base Image (Before) */}
             <img
               src={imageUrl}
-              alt="Disaster Scene"
-              className="h-full w-full object-cover pointer-events-none"
+              alt="Disaster Scene Before"
+              className="absolute top-0 left-0 h-full w-full object-cover pointer-events-none"
               draggable="false"
             />
 
-            {isProcessing && (
-              <div className="absolute inset-0 pointer-events-none overflow-hidden bg-orange-950/20 z-20">
-                <div className="absolute w-full h-1 bg-gradient-to-r from-transparent via-orange-500 to-transparent shadow-[0_0_15px_#f97316] animate-scanline" />
+            {/* Clipped Image (After) */}
+            <div 
+              className="absolute top-0 left-0 h-full w-full overflow-hidden pointer-events-none"
+              style={{ clipPath: assessment ? `inset(0 0 0 ${sliderValue}%)` : 'none' }}
+            >
+              <img
+                src={imageUrl}
+                alt="Disaster Scene After"
+                className="absolute top-0 left-0 h-full w-full object-cover pointer-events-none"
+                draggable="false"
+              />
+
+              {isProcessing && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden bg-orange-950/20 z-20">
+                  <div className="absolute w-full h-1 bg-gradient-to-r from-transparent via-orange-500 to-transparent shadow-[0_0_15px_#f97316] animate-scanline" />
+                </div>
+              )}
+
+              {/* Editable Bounding Boxes */}
+              <div className="pointer-events-auto w-full h-full absolute top-0 left-0">
+                {editableBoxes.map((bbox, idx) => {
+                  const isEdited = hasChanges;
+                  const boxColor = isEdited ? 'amber' : 'rose';
+                  const label = isEdited ? 'HITL OVERRIDE' : `${damageType.toUpperCase()} (SAM REFINED)`;
+                  
+                  return (
+                    <div
+                      key={idx}
+                      onPointerDown={(e) => handleBoxPointerDown(e, idx)}
+                      className={`absolute border-[2.5px] shadow-[0_0_20px_rgba(239,68,68,0.3)] ${
+                        isProcessing ? 'pointer-events-none' : 'cursor-move hover:bg-white/10'
+                      } group`}
+                      style={{
+                        ...getBoxStyle(bbox),
+                        borderColor: isEdited ? '#fbbf24' : '#f43f5e',
+                        backgroundColor: isEdited ? 'rgba(251,191,36,0.1)' : 'rgba(244,63,94,0.1)',
+                      }}
+                    >
+                      <div 
+                        className="absolute -top-7 left-[-2.5px] text-slate-950 font-mono text-[10px] font-bold px-2 py-0.5 rounded shadow whitespace-nowrap flex items-center gap-1"
+                        style={{ backgroundColor: isEdited ? '#fbbf24' : '#f43f5e', color: isEdited ? '#0f172a' : '#ffffff' }}
+                      >
+                        <span>{label}</span>
+                      </div>
+                      
+                      {!isEdited && confidence && idx === 0 && (
+                        <div className="absolute -bottom-6 right-[-2.5px] bg-slate-950 text-rose-400 border border-rose-500/50 font-mono text-[9px] font-bold px-1.5 py-0.5 rounded pointer-events-none">
+                          {confidence}% CONFIDENCE
+                        </div>
+                      )}
+
+                      {/* Delete Box Button */}
+                      {!isProcessing && (
+                        <button
+                          onClick={(e) => handleDeleteBox(e, idx)}
+                          className="absolute -top-3 -right-3 w-6 h-6 bg-slate-900 border border-slate-700 text-slate-400 hover:text-rose-500 hover:border-rose-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                          title="Remove Box"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
+                      {renderHandles(idx)}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Before/After Slider Handle */}
+            {assessment && !isProcessing && (
+              <div 
+                className="absolute top-0 bottom-0 w-1 bg-white z-30 cursor-ew-resize hover:bg-orange-400 transition-colors shadow-[0_0_10px_rgba(0,0,0,0.5)] flex items-center justify-center group"
+                style={{ left: `calc(${sliderValue}% - 2px)` }}
+                onPointerDown={handleSliderPointerDown}
+              >
+                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.4)] pointer-events-none group-hover:scale-110 transition-transform">
+                  <div className="flex gap-1 pointer-events-none">
+                    <div className="w-0.5 h-3 bg-slate-400"></div>
+                    <div className="w-0.5 h-3 bg-slate-400"></div>
+                  </div>
+                </div>
+                {/* Labels for Before/After */}
+                <div className="absolute top-4 w-[240px] flex justify-between pointer-events-none opacity-60 font-mono font-bold text-[10px] tracking-wider">
+                  <span className="text-white drop-shadow-md pr-12 bg-black/40 px-2 py-1 rounded">RAW IMAGE</span>
+                  <span className="text-orange-400 drop-shadow-md pl-12 bg-black/40 px-2 py-1 rounded">SAM PROCESSED</span>
+                </div>
               </div>
             )}
 
-            {/* Editable Bounding Boxes */}
-            {editableBoxes.map((bbox, idx) => {
-              const isEdited = hasChanges;
-              const boxColor = isEdited ? 'amber' : 'rose';
-              const label = isEdited ? 'HITL OVERRIDE' : `${damageType.toUpperCase()} (SAM REFINED)`;
-              
-              return (
-                <div
-                  key={idx}
-                  onPointerDown={(e) => handleBoxPointerDown(e, idx)}
-                  className={`absolute border-[2.5px] shadow-[0_0_20px_rgba(239,68,68,0.3)] ${
-                    isProcessing ? 'pointer-events-none' : 'cursor-move hover:bg-white/10'
-                  } group`}
-                  style={{
-                    ...getBoxStyle(bbox),
-                    borderColor: isEdited ? '#fbbf24' : '#f43f5e',
-                    backgroundColor: isEdited ? 'rgba(251,191,36,0.1)' : 'rgba(244,63,94,0.1)',
-                  }}
-                >
-                  <div 
-                    className="absolute -top-7 left-[-2.5px] text-slate-950 font-mono text-[10px] font-bold px-2 py-0.5 rounded shadow whitespace-nowrap flex items-center gap-1"
-                    style={{ backgroundColor: isEdited ? '#fbbf24' : '#f43f5e', color: isEdited ? '#0f172a' : '#ffffff' }}
-                  >
-                    <span>{label}</span>
-                  </div>
-                  
-                  {!isEdited && confidence && idx === 0 && (
-                    <div className="absolute -bottom-6 right-[-2.5px] bg-slate-950 text-rose-400 border border-rose-500/50 font-mono text-[9px] font-bold px-1.5 py-0.5 rounded pointer-events-none">
-                      {confidence}% CONFIDENCE
-                    </div>
-                  )}
-
-                  {/* Delete Box Button */}
-                  {!isProcessing && (
-                    <button
-                      onClick={(e) => handleDeleteBox(e, idx)}
-                      className="absolute -top-3 -right-3 w-6 h-6 bg-slate-900 border border-slate-700 text-slate-400 hover:text-rose-500 hover:border-rose-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                      title="Remove Box"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-
-                  {renderHandles(idx)}
-                </div>
-              );
-            })}
-
-            <div className="absolute bottom-3 left-3 bg-[#080D18]/90 border border-slate-800 rounded px-2.5 py-1 text-[10px] font-mono text-slate-400 flex flex-col gap-0.5 pointer-events-none backdrop-blur">
+            <div className="absolute bottom-3 left-3 bg-[#080D18]/90 border border-slate-800 rounded px-2.5 py-1 text-[10px] font-mono text-slate-400 flex flex-col gap-0.5 pointer-events-none backdrop-blur z-40">
               <div className="flex items-center gap-1.5">
                 <Crosshair className="h-3 w-3 text-orange-400" />
-                <span>{isProcessing ? 'Processing image...' : 'Click & drag canvas to draw. Drag boxes to move.'}</span>
+                <span>{isProcessing ? 'Processing image...' : 'Click & drag canvas to draw. Drag slider to compare.'}</span>
               </div>
             </div>
           </>

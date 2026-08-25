@@ -18,7 +18,7 @@ client = genai.Client()
 def test_multimodal():
     # 3. Define your prompt and load a local image
     # IMPORTANT: Replace 'sample.jpg' with the path to a real image on your computer
-    image_path = "image.jpg" 
+    image_path = "work.png" 
     prompt_text = "Describe what you see in this image in two sentences."
     
     try:
@@ -28,7 +28,7 @@ def test_multimodal():
         print("Sending request to Gemini 3.7 Flash...")
         # 4. Call the model with a list containing both the text and the image
         response = client.models.generate_content(
-            model="gemini-3.7-flash",
+            model="gemini-3.6-flash",
             contents=[prompt_text, image]
         )
         

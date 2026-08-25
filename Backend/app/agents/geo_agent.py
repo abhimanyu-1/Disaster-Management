@@ -35,9 +35,11 @@ def get_context(request: GeoAgentRequest) -> GeoAgentResponse:
         Analyze the following disaster image located at coordinates (Lat: {request.lat}, Lon: {request.lon}) 
         and extract the following geographic and demographic information.
         
+        To estimate `population_affected`, DO NOT guess a default number. Instead, carefully observe the image to count or estimate the number of visible residential buildings, houses, or structures, and multiply that by an average household occupancy (e.g., 3-4 people per building). If it's a dense urban area, adjust accordingly. If no buildings are visible, the population affected should be very low or 0.
+        
         Respond with ONLY a JSON object exactly matching this structure:
         {{
-            "population_affected": integer (estimated number of people affected in the visible area),
+            "population_affected": integer (estimated number of people affected based on visible structures),
             "criticality": 0.0 to 1.0 (float, where 1.0 is extremely critical e.g. hospitals or dense infrastructure destroyed),
             "accessibility": 0.0 to 1.0 (float, where 0.0 means completely inaccessible due to blocked roads/floods, and 1.0 means clear access),
             "flood_zone": true/false (whether the area appears to be a flood zone or is currently flooded)
