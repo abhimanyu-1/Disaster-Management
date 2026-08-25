@@ -53,6 +53,72 @@ export class ApiService {
     return await res.json();
   }
 
+  async streamAssessment(payload, onEvent) {
+    const res = await fetch(`${this.baseUrl}/api/assessments/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || `Streaming assessment failed: HTTP ${res.status}`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+    let finalResult = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('data:')) {
+          const jsonStr = trimmed.replace(/^data:\s*/, '');
+          if (!jsonStr) continue;
+          try {
+            const eventData = JSON.parse(jsonStr);
+            if (eventData.event === 'error') {
+              throw new Error(eventData.error || 'Pipeline execution failed');
+            }
+            if (onEvent) {
+              onEvent(eventData);
+            }
+            if (eventData.event === 'complete') {
+              finalResult = eventData.assessment;
+            }
+          } catch (e) {
+            console.error('Failed to parse SSE chunk:', e, jsonStr);
+          }
+        }
+      }
+    }
+
+    if (buffer.trim().startsWith('data:')) {
+      const jsonStr = buffer.trim().replace(/^data:\s*/, '');
+      if (jsonStr) {
+        try {
+          const eventData = JSON.parse(jsonStr);
+          if (onEvent) onEvent(eventData);
+          if (eventData.event === 'complete') finalResult = eventData.assessment;
+        } catch (e) {
+          console.error('Failed to parse trailing SSE buffer:', e);
+        }
+      }
+    }
+
+    return finalResult;
+  }
+
   async getAssessmentById(id) {
     const res = await fetch(`${this.baseUrl}/api/assessments/${encodeURIComponent(id)}`);
     if (!res.ok) {

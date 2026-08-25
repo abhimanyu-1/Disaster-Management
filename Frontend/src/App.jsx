@@ -15,6 +15,7 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [inferenceTime, setInferenceTime] = useState(null);
+  const [pipelineState, setPipelineState] = useState(null);
   const [toasts, setToasts] = useState([]);
 
   const addToast = (type, message) => {
@@ -60,12 +61,107 @@ export default function App() {
     setIsProcessing(true);
     const startTime = performance.now();
 
+    // Initialize progressive pipeline state
+    setPipelineState({
+      activeStep: 1,
+      activeAgent: 'vision',
+      activeName: 'Vision Analysis',
+      message: 'Initializing multi-agent pipeline...',
+      completedAgents: []
+    });
+
+    setCurrentAssessment({
+      assessment_id: 'STREAMING...',
+      asset_id: payload.asset_id,
+      image_path: payload.image_path,
+      vision: null,
+      geo_context: null,
+      assessment: null,
+      claim_analysis: null,
+      priority: null,
+      verification: null,
+      final_decision: null
+    });
+
     try {
-      const result = await api.createAssessment(payload);
+      const result = await api.streamAssessment(payload, (event) => {
+        if (event.event === 'init') {
+          setCurrentAssessment(prev => ({
+            ...prev,
+            assessment_id: event.assessment_id,
+            asset_id: event.asset_id
+          }));
+        } else if (event.event === 'step_start') {
+          setPipelineState(prev => ({
+            ...prev,
+            activeStep: event.step,
+            activeAgent: event.agent,
+            activeName: event.name,
+            message: event.message
+          }));
+        } else if (event.event === 'step_complete') {
+          setPipelineState(prev => ({
+            ...prev,
+            completedAgents: Array.from(new Set([...(prev?.completedAgents || []), event.agent]))
+          }));
+
+          if (event.agent === 'vision') {
+            setCurrentAssessment(prev => ({
+              ...prev,
+              vision: {
+                ...(prev?.vision || {}),
+                ...event.data
+              }
+            }));
+          } else if (event.agent === 'sam') {
+            setCurrentAssessment(prev => ({
+              ...prev,
+              vision: {
+                ...(prev?.vision || {}),
+                bounding_boxes: event.data.refined_bboxes
+              }
+            }));
+          } else if (event.agent === 'geo') {
+            setCurrentAssessment(prev => ({
+              ...prev,
+              geo_context: event.data
+            }));
+          } else if (event.agent === 'claim') {
+            setCurrentAssessment(prev => ({
+              ...prev,
+              claim_analysis: event.data,
+              assessment: event.severity
+            }));
+          } else if (event.agent === 'priority') {
+            setCurrentAssessment(prev => ({
+              ...prev,
+              priority: event.data
+            }));
+          } else if (event.agent === 'verification') {
+            setCurrentAssessment(prev => ({
+              ...prev,
+              verification: event.data,
+              final_decision: event.final_decision
+            }));
+          }
+        } else if (event.event === 'complete') {
+          setCurrentAssessment(event.assessment);
+        }
+      });
+
       const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
       setInferenceTime(elapsed);
-      setCurrentAssessment(result);
-      addToast('success', `Assessment complete for ${payload.asset_id}! Severity: ${result.assessment?.severity || 'Calculated'}`);
+      if (result) {
+        setCurrentAssessment(result);
+        addToast('success', `Assessment complete for ${payload.asset_id}! Severity: ${result.assessment?.severity || 'Calculated'}`);
+      }
+      setPipelineState(prev => ({
+        ...prev,
+        activeStep: null,
+        activeAgent: null,
+        message: 'All 6 AI agents executed successfully.',
+        completedAgents: ['vision', 'sam', 'geo', 'claim', 'priority', 'verification']
+      }));
     } catch (err) {
       console.error('Assessment failed:', err);
       addToast('error', `Assessment failed: ${err.message}`);
@@ -95,6 +191,8 @@ export default function App() {
 
   const handleImageReset = () => {
     setCurrentAssessment(null);
+    setPipelineState(null);
+    setInferenceTime(null);
   };
 
   const handleSaveBBox = (newBoxes) => {
@@ -148,7 +246,11 @@ export default function App() {
             />
 
             {/* Bottom Multi-Agent Telemetry Log */}
-            <AgentPipeline assessment={currentAssessment} />
+            <AgentPipeline 
+              assessment={currentAssessment} 
+              isProcessing={isProcessing}
+              pipelineState={pipelineState}
+            />
           </div>
 
           {/* Right Column: 03 Crisis Severity Index & HITL Actions */}

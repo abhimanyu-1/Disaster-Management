@@ -1,5 +1,6 @@
 import uuid
 import time
+import json
 from ..schemas.assessment import (
     FinalAssessment, VisionAssessment, GeoAssessment, 
     SeverityAssessment, ClaimAssessment, PriorityAssessment, 
@@ -15,6 +16,248 @@ from ..agents.geo_agent import get_context
 from ..agents.claim_agent import analyze_claim
 from ..agents.priority_agent import calculate_priority
 from ..agents.verification_agent import check_verification
+
+def stream_workflow(request):
+    asset_id = request.asset_id
+    assessment_id = f"ASM-{str(uuid.uuid4())[:8].upper()}"
+    
+    yield json.dumps({
+        "event": "init",
+        "assessment_id": assessment_id,
+        "asset_id": asset_id
+    })
+    
+    # 1. Vision Agent
+    yield json.dumps({
+        "event": "step_start",
+        "step": 1,
+        "agent": "vision",
+        "name": "Vision Analysis",
+        "message": "Analyzing optical reconnaissance imagery..."
+    })
+    
+    vision_resp = analyze_images(VisionAgentRequest(
+        image_path=request.image_path,
+        asset_id=asset_id
+    ))
+    
+    yield json.dumps({
+        "event": "step_complete",
+        "step": 1,
+        "agent": "vision",
+        "name": "Vision Analysis",
+        "data": {
+            "damage_detected": vision_resp.damage_detected,
+            "damage_type": vision_resp.damage_type,
+            "damage_score": round(vision_resp.damage_score, 3),
+            "confidence": round(vision_resp.confidence, 3),
+            "evidence": vision_resp.evidence,
+            "bounding_boxes": [vision_resp.bounding_box] if vision_resp.bounding_box else []
+        }
+    })
+    
+    time.sleep(1)
+    
+    # 2. SAM Agent (Refining Bounding Box)
+    yield json.dumps({
+        "event": "step_start",
+        "step": 2,
+        "agent": "sam",
+        "name": "SAM Localization",
+        "message": "Generating pixel-level mask & bounding ROI refinement..."
+    })
+    
+    sam_resp = run_sam_inference(SamAgentRequest(
+        image_path=request.image_path,
+        rough_bbox=vision_resp.bounding_box
+    ))
+    
+    yield json.dumps({
+        "event": "step_complete",
+        "step": 2,
+        "agent": "sam",
+        "name": "SAM Localization",
+        "data": {
+            "refined_bboxes": sam_resp.refined_bboxes
+        }
+    })
+    
+    time.sleep(1)
+    
+    # 3. Geo Agent
+    yield json.dumps({
+        "event": "step_start",
+        "step": 3,
+        "agent": "geo",
+        "name": "Geo Context",
+        "message": "Cross-referencing GIS hazards, infrastructure & population density..."
+    })
+    
+    geo_resp = get_context(GeoAgentRequest(
+        image_path=request.image_path,
+        lat=request.lat,
+        lon=request.lon
+    ))
+    
+    yield json.dumps({
+        "event": "step_complete",
+        "step": 3,
+        "agent": "geo",
+        "name": "Geo Context",
+        "data": {
+            "population_affected": geo_resp.population_affected,
+            "criticality": geo_resp.criticality,
+            "flood_zone": geo_resp.flood_zone
+        }
+    })
+    
+    time.sleep(1)
+    
+    # 4. Assessment Engine & Claim Agent
+    severity_score = vision_resp.damage_score
+    severity_level = "LOW"
+    if severity_score > 0.8:
+        severity_level = "HIGH"
+    elif severity_score > 0.4:
+        severity_level = "MEDIUM"
+        
+    yield json.dumps({
+        "event": "step_start",
+        "step": 4,
+        "agent": "claim",
+        "name": "Claim Triage",
+        "message": "Auditing damage claims for fraud & evidence consistency..."
+    })
+    
+    claim_resp = analyze_claim(ClaimAgentRequest(
+        assessment_severity=severity_level,
+        field_report=request.field_report,
+        claim_amount=request.claim_amount,
+        claim_desc=request.claim_desc
+    ))
+    
+    yield json.dumps({
+        "event": "step_complete",
+        "step": 4,
+        "agent": "claim",
+        "name": "Claim Triage",
+        "data": {
+            "risk": claim_resp.claim_risk,
+            "consistent": claim_resp.is_consistent
+        },
+        "severity": {
+            "severity": severity_level,
+            "severity_score": round(severity_score, 3)
+        }
+    })
+    
+    time.sleep(1)
+    
+    # 5. Priority Agent
+    yield json.dumps({
+        "event": "step_start",
+        "step": 5,
+        "agent": "priority",
+        "name": "Priority Dispatch",
+        "message": "Synthesizing multi-variable crisis triage matrix..."
+    })
+    
+    priority_resp = calculate_priority(PriorityAgentRequest(
+        severity_score=severity_score,
+        population_affected=geo_resp.population_affected,
+        criticality=geo_resp.criticality,
+        confidence=vision_resp.confidence,
+        claim_risk=claim_resp.claim_risk
+    ))
+    
+    yield json.dumps({
+        "event": "step_complete",
+        "step": 5,
+        "agent": "priority",
+        "name": "Priority Dispatch",
+        "data": {
+            "score": priority_resp.priority_score,
+            "level": priority_resp.priority_level
+        }
+    })
+    
+    time.sleep(1)
+    
+    # 6. Verification Agent
+    yield json.dumps({
+        "event": "step_start",
+        "step": 6,
+        "agent": "verification",
+        "name": "HITL Guardrail",
+        "message": "Evaluating AI confidence gates & HITL dispatch policies..."
+    })
+    
+    verification_resp = check_verification(VerificationAgentRequest(
+        confidence=vision_resp.confidence,
+        claim_risk=claim_resp.claim_risk,
+        evidence_agreement="HIGH" if claim_resp.is_consistent else "LOW"
+    ))
+    
+    status = "REVIEW_REQUIRED" if verification_resp.verification_required else "AUTO_APPROVED"
+    
+    yield json.dumps({
+        "event": "step_complete",
+        "step": 6,
+        "agent": "verification",
+        "name": "HITL Guardrail",
+        "data": {
+            "required": verification_resp.verification_required,
+            "action": verification_resp.action
+        },
+        "final_decision": {
+            "status": status,
+            "recommended_action": verification_resp.action
+        }
+    })
+    
+    # Assembly
+    final_assessment = FinalAssessment(
+        assessment_id=assessment_id,
+        image_path=request.image_path,
+        vision=VisionAssessment(
+            damage_detected=vision_resp.damage_detected,
+            damage_type=vision_resp.damage_type,
+            damage_score=round(vision_resp.damage_score, 3),
+            confidence=round(vision_resp.confidence, 3),
+            evidence=vision_resp.evidence,
+            bounding_boxes=sam_resp.refined_bboxes
+        ),
+        geo_context=GeoAssessment(
+            population_affected=geo_resp.population_affected,
+            criticality=geo_resp.criticality,
+            flood_zone=geo_resp.flood_zone
+        ),
+        assessment=SeverityAssessment(
+            severity=severity_level,
+            severity_score=round(severity_score, 3)
+        ),
+        claim_analysis=ClaimAssessment(
+            risk=claim_resp.claim_risk,
+            consistent=claim_resp.is_consistent
+        ),
+        priority=PriorityAssessment(
+            score=priority_resp.priority_score,
+            level=priority_resp.priority_level
+        ),
+        verification=VerificationAssessment(
+            required=verification_resp.verification_required,
+            action=verification_resp.action
+        ),
+        final_decision=FinalDecision(
+            status=status,
+            recommended_action=verification_resp.action
+        )
+    )
+    
+    yield json.dumps({
+        "event": "complete",
+        "assessment": final_assessment.model_dump()
+    })
 
 def run_workflow(request) -> FinalAssessment:
     asset_id = request.asset_id
