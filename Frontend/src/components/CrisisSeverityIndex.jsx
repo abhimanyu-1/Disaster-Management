@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Shield, 
   AlertTriangle, 
@@ -11,8 +11,10 @@ import {
   CheckCircle2,
   AlertOctagon,
   Building2,
-  FileCheck
+  FileCheck,
+  Download
 } from 'lucide-react';
+import { api } from '../services/api';
 
 export default function CrisisSeverityIndex({ 
   assessment, 
@@ -21,6 +23,12 @@ export default function CrisisSeverityIndex({
 }) {
   const [localStatus, setLocalStatus] = useState(null);
   const [feedback, setFeedback] = useState(null);
+
+  // Reset local state whenever a new assessment is loaded
+  useEffect(() => {
+    setLocalStatus(null);
+    setFeedback(null);
+  }, [assessment?.assessment_id]);
 
   const priorityScore = assessment?.priority?.score !== undefined 
     ? Math.round(assessment.priority.score * 100) 
@@ -47,7 +55,13 @@ export default function CrisisSeverityIndex({
   };
 
   const threat = getThreatColor();
-  const currentStatus = localStatus || assessment?.final_decision?.status || 'AWAITING_TRIGGER';
+  const currentStatus = localStatus === 'CHANGE_MODE' 
+    ? 'REVIEW_REQUIRED' 
+    : (localStatus || assessment?.final_decision?.status || 'AWAITING_TRIGGER');
+
+  const isActioned = localStatus !== 'CHANGE_MODE' && ['APPROVED', 'FIELD_INSPECTION', 'REJECTED'].includes(
+    localStatus || (assessment?.final_decision?.status && !['REVIEW_REQUIRED', 'PENDING', 'AUTO_APPROVED', 'AWAITING_TRIGGER'].includes(assessment.final_decision.status) ? assessment.final_decision.status : null)
+  );
 
   return (
     <aside className="rounded-2xl border border-slate-800 bg-[#0E1626]/90 p-4 shadow-2xl flex flex-col space-y-4 font-mono text-xs">
@@ -174,31 +188,66 @@ export default function CrisisSeverityIndex({
             <span className="text-orange-400 font-mono">{currentStatus}</span>
           </div>
 
-          <div className="grid grid-cols-3 gap-1.5 font-mono text-[10px]">
-            <button
-              onClick={() => handleUpdateStatus('APPROVED')}
-              className="p-2 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/50 text-emerald-300 font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-            >
-              <CheckCircle className="h-3.5 w-3.5" />
-              <span>Approve</span>
-            </button>
+          {isActioned ? (
+            <div className="space-y-2 pt-0.5">
+              <a
+                href={`${api.getBaseUrl()}/api/assessments/${assessment.assessment_id}/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full p-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-400/50 text-white font-bold transition-all shadow-lg shadow-emerald-950/60 flex items-center justify-center gap-2 cursor-pointer text-[11px] tracking-wider uppercase group"
+              >
+                <Download className="h-4 w-4 group-hover:-translate-y-0.5 transition-transform" />
+                <span>Export Assessment PDF</span>
+              </a>
 
-            <button
-              onClick={() => handleUpdateStatus('FIELD_INSPECTION')}
-              className="p-2 rounded-xl bg-blue-950/60 hover:bg-blue-900/80 border border-blue-500/50 text-blue-300 font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-            >
-              <Search className="h-3.5 w-3.5" />
-              <span>Inspect</span>
-            </button>
+              <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Action: <b className={
+                    currentStatus === 'APPROVED' ? 'text-emerald-400' :
+                    currentStatus === 'FIELD_INSPECTION' ? 'text-blue-400' :
+                    'text-rose-400'
+                  }>{currentStatus}</b></span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLocalStatus('CHANGE_MODE')}
+                  className="text-slate-400 hover:text-slate-200 underline decoration-slate-600 hover:decoration-slate-300 transition-colors cursor-pointer"
+                >
+                  Change Decision
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-1.5 font-mono text-[10px]">
+              <button
+                type="button"
+                onClick={() => handleUpdateStatus('APPROVED')}
+                className="p-2 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/50 text-emerald-300 font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+              >
+                <CheckCircle className="h-3.5 w-3.5" />
+                <span>Approve</span>
+              </button>
 
-            <button
-              onClick={() => handleUpdateStatus('REJECTED')}
-              className="p-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 border border-rose-500/50 text-rose-300 font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-            >
-              <XCircle className="h-3.5 w-3.5" />
-              <span>Reject</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => handleUpdateStatus('FIELD_INSPECTION')}
+                className="p-2 rounded-xl bg-blue-950/60 hover:bg-blue-900/80 border border-blue-500/50 text-blue-300 font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+              >
+                <Search className="h-3.5 w-3.5" />
+                <span>Inspect</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleUpdateStatus('REJECTED')}
+                className="p-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 border border-rose-500/50 text-rose-300 font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                <span>Reject</span>
+              </button>
+            </div>
+          )}
 
           {feedback && (
             <p className="text-[10px] text-center text-emerald-400 font-bold pt-1">

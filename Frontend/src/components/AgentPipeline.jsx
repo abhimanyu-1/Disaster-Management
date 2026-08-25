@@ -9,8 +9,7 @@ import {
   AlertTriangle,
   Zap,
   Bot,
-  Crosshair,
-  Download
+  Crosshair
 } from 'lucide-react';
 
 export default function AgentPipeline({ assessment }) {
@@ -51,15 +50,6 @@ export default function AgentPipeline({ assessment }) {
           <span className="text-[10px] bg-slate-900 text-slate-400 border border-slate-800 px-2.5 py-0.5 rounded">
             ID: {assessment.assessment_id}
           </span>
-          <a
-            href={`http://localhost:8000/api/assessments/${assessment.assessment_id}/pdf`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-[10px] bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded hover:bg-emerald-900/80 transition-colors font-bold tracking-wider"
-          >
-            <Download className="h-3 w-3" />
-            EXPORT PDF
-          </a>
         </div>
       </div>
 
