@@ -5,21 +5,27 @@ import {
   Flame, 
   CheckCircle, 
   Search, 
-  XCircle,
-  Activity,
-  UserCheck,
-  CheckCircle2,
-  AlertOctagon,
-  Building2,
-  FileCheck,
-  Download
+  XCircle, 
+  Activity, 
+  UserCheck, 
+  CheckCircle2, 
+  AlertOctagon, 
+  Building2, 
+  FileCheck, 
+  Download,
+  Loader2,
+  Lock,
+  Cpu,
+  Sparkles
 } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function CrisisSeverityIndex({ 
   assessment, 
   inferenceTime,
-  onVerificationUpdated
+  onVerificationUpdated,
+  isProcessing = false,
+  pipelineState = null
 }) {
   const [localStatus, setLocalStatus] = useState(null);
   const [feedback, setFeedback] = useState(null);
@@ -63,8 +69,103 @@ export default function CrisisSeverityIndex({
     localStatus || (assessment?.final_decision?.status && !['REVIEW_REQUIRED', 'PENDING', 'AUTO_APPROVED', 'AWAITING_TRIGGER'].includes(assessment.final_decision.status) ? assessment.final_decision.status : null)
   );
 
+  // 1. IN-FLIGHT SYNTHESIS STATE (Pipeline Streaming in Progress)
+  if (isProcessing) {
+    return (
+      <aside className="rounded-2xl border border-slate-800 bg-[#0E1626]/90 p-4 shadow-2xl flex flex-col space-y-4 font-mono text-xs">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-amber-400 animate-pulse" />
+            <h2 className="font-bold uppercase tracking-wider text-slate-200">
+              03 Crisis Severity Index
+            </h2>
+          </div>
+          <span className="flex items-center gap-1 text-[10px] text-amber-300 bg-amber-950/60 border border-amber-500/40 px-2 py-0.5 rounded animate-pulse font-bold">
+            <Loader2 className="h-2.5 w-2.5 animate-spin text-amber-400" />
+            Synthesizing
+          </span>
+        </div>
+
+        {/* Live Synthesis Ingesting Card */}
+        <div className="rounded-xl border-2 border-amber-500/40 bg-[#080D18] p-4 text-center space-y-3 relative overflow-hidden shadow-lg shadow-amber-500/10">
+          <div className="h-10 w-10 rounded-xl bg-amber-950/80 border border-amber-500/40 flex items-center justify-center text-amber-400 mx-auto animate-bounce">
+            <Cpu className="h-5 w-5" />
+          </div>
+          
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+              Multi-Factor Triage In Progress
+            </h3>
+            <p className="text-[11px] text-amber-300/80 mt-1">
+              {pipelineState?.message || 'Orchestrating AI inference pipeline...'}
+            </p>
+          </div>
+
+          <div className="p-2.5 rounded-lg bg-[#0E1626] border border-slate-800 text-[10px] text-left space-y-1.5">
+            <div className="flex items-center justify-between text-slate-400">
+              <span>Pipeline Convergence:</span>
+              <span className="text-amber-400 font-bold">
+                Step {pipelineState?.activeStep || 1}/6
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-400">
+              <span>Active Layer:</span>
+              <span className="text-white font-bold uppercase">
+                {pipelineState?.activeName || 'Vision Analysis'}
+              </span>
+            </div>
+          </div>
+
+          {/* Locked Dispatch Notice */}
+          <div className="p-2 rounded-lg bg-slate-900/80 border border-slate-800 flex items-center justify-center gap-1.5 text-[10px] text-slate-400">
+            <Lock className="h-3 w-3 text-amber-400 shrink-0" />
+            <span>HITL actions unlock automatically upon pipeline completion</span>
+          </div>
+        </div>
+
+        {/* Standby Skeletons */}
+        <div className="space-y-2 opacity-40">
+          <div className="h-16 rounded-xl bg-slate-800/40 border border-slate-800 animate-pulse" />
+          <div className="h-14 rounded-xl bg-slate-800/40 border border-slate-800 animate-pulse" />
+        </div>
+      </aside>
+    );
+  }
+
+  // 2. STANDBY STATE (No Assessment Yet)
+  if (!assessment) {
+    return (
+      <aside className="rounded-2xl border border-slate-800 bg-[#0E1626]/90 p-4 shadow-2xl flex flex-col space-y-4 font-mono text-xs">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-orange-400" />
+            <h2 className="font-bold uppercase tracking-wider text-slate-200">
+              03 Crisis Severity Index
+            </h2>
+          </div>
+          <span className="text-[10px] text-slate-400 bg-[#080D18] border border-slate-800 px-2 py-0.5 rounded">
+            Multi-Factor Triage
+          </span>
+        </div>
+
+        <div className="rounded-xl border border-slate-800 bg-[#080D18] p-6 text-center text-slate-500 space-y-2">
+          <Shield className="h-8 w-8 text-slate-600 mx-auto mb-1" />
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-300">
+            Triage Console On Standby
+          </p>
+          <p className="text-[11px] max-w-xs mx-auto">
+            Execute an assessment from Mission Control to synthesize multi-factor risk scores and unlock HITL dispatch actions.
+          </p>
+        </div>
+      </aside>
+    );
+  }
+
+  // 3. FULL COMPLETED CONSOLE (Rendered at the very end when all agents complete)
   return (
-    <aside className="rounded-2xl border border-slate-800 bg-[#0E1626]/90 p-4 shadow-2xl flex flex-col space-y-4 font-mono text-xs">
+    <aside className="rounded-2xl border border-slate-800 bg-[#0E1626]/90 p-4 shadow-2xl flex flex-col space-y-4 font-mono text-xs animate-in fade-in duration-300">
       
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -74,8 +175,8 @@ export default function CrisisSeverityIndex({
             03 Crisis Severity Index
           </h2>
         </div>
-        <span className="text-[10px] text-slate-400 bg-[#080D18] border border-slate-800 px-2 py-0.5 rounded">
-          Multi-Factor Triage
+        <span className="text-[10px] text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded font-bold">
+          ✓ Triage Complete
         </span>
       </div>
 
@@ -128,49 +229,47 @@ export default function CrisisSeverityIndex({
       </div>
 
       {/* Core Backend Fields Grid */}
-      {assessment && (
-        <div className="space-y-2">
-          
-          {/* Geo Context Summary */}
-          <div className="p-2.5 rounded-xl bg-[#080D18] border border-slate-800 flex items-center justify-between">
-            <div>
-              <span className="text-[10px] uppercase text-slate-400 block font-bold">Affected Population</span>
-              <span className="text-sm font-bold text-white mt-0.5 block">
-                {assessment.geo_context?.population_affected?.toLocaleString() || '0'} residents
-              </span>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] uppercase text-slate-400 block font-bold">Criticality</span>
-              <span className="text-sm font-bold text-emerald-400 mt-0.5 block">
-                {assessment.geo_context?.criticality}
-              </span>
-            </div>
+      <div className="space-y-2">
+        
+        {/* Geo Context Summary */}
+        <div className="p-2.5 rounded-xl bg-[#080D18] border border-slate-800 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] uppercase text-slate-400 block font-bold">Affected Population</span>
+            <span className="text-sm font-bold text-white mt-0.5 block">
+              {assessment.geo_context?.population_affected?.toLocaleString() || '0'} residents
+            </span>
           </div>
-
-          {/* Claim Risk & Consistency */}
-          <div className="p-2.5 rounded-xl bg-[#080D18] border border-slate-800 flex items-center justify-between">
-            <div>
-              <span className="text-[10px] uppercase text-slate-400 block font-bold">Claim Consistency</span>
-              <span className={`text-xs font-bold mt-0.5 flex items-center gap-1 ${
-                assessment.claim_analysis?.consistent ? 'text-emerald-400' : 'text-rose-400'
-              }`}>
-                {assessment.claim_analysis?.consistent ? '✓ Evidence Aligns' : '⚠️ Discrepancy Found'}
-              </span>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] uppercase text-slate-400 block font-bold">Claim Risk</span>
-              <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded mt-0.5 ${
-                assessment.claim_analysis?.risk === 'HIGH' ? 'bg-rose-950 text-rose-300 border border-rose-500/40' :
-                assessment.claim_analysis?.risk === 'MEDIUM' ? 'bg-amber-950 text-amber-300 border border-amber-500/40' :
-                'bg-emerald-950 text-emerald-300 border border-emerald-500/40'
-              }`}>
-                {assessment.claim_analysis?.risk} RISK
-              </span>
-            </div>
+          <div className="text-right">
+            <span className="text-[10px] uppercase text-slate-400 block font-bold">Criticality</span>
+            <span className="text-sm font-bold text-emerald-400 mt-0.5 block">
+              {assessment.geo_context?.criticality}
+            </span>
           </div>
-
         </div>
-      )}
+
+        {/* Claim Risk & Consistency */}
+        <div className="p-2.5 rounded-xl bg-[#080D18] border border-slate-800 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] uppercase text-slate-400 block font-bold">Claim Consistency</span>
+            <span className={`text-xs font-bold mt-0.5 flex items-center gap-1 ${
+              assessment.claim_analysis?.consistent ? 'text-emerald-400' : 'text-rose-400'
+            }`}>
+              {assessment.claim_analysis?.consistent ? '✓ Evidence Aligns' : '⚠️ Discrepancy Found'}
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="text-[10px] uppercase text-slate-400 block font-bold">Claim Risk</span>
+            <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded mt-0.5 ${
+              assessment.claim_analysis?.risk === 'HIGH' ? 'bg-rose-950 text-rose-300 border border-rose-500/40' :
+              assessment.claim_analysis?.risk === 'MEDIUM' ? 'bg-amber-950 text-amber-300 border border-amber-500/40' :
+              'bg-emerald-950 text-emerald-300 border border-emerald-500/40'
+            }`}>
+              {assessment.claim_analysis?.risk} RISK
+            </span>
+          </div>
+        </div>
+
+      </div>
 
       {/* Latency & Telemetry */}
       {inferenceTime && (
@@ -181,81 +280,79 @@ export default function CrisisSeverityIndex({
       )}
 
       {/* Human-In-The-Loop Dispatch Console */}
-      {assessment && (
-        <div className="pt-2 border-t border-slate-800 space-y-2">
-          <div className="flex justify-between items-center text-[10px] font-bold text-slate-400">
-            <span>HITL DISPATCH ACTIONS</span>
-            <span className="text-orange-400 font-mono">{currentStatus}</span>
-          </div>
-
-          {isActioned ? (
-            <div className="space-y-2 pt-0.5">
-              <a
-                href={`${api.getBaseUrl()}/api/assessments/${assessment.assessment_id}/pdf`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full p-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-400/50 text-white font-bold transition-all shadow-lg shadow-emerald-950/60 flex items-center justify-center gap-2 cursor-pointer text-[11px] tracking-wider uppercase group"
-              >
-                <Download className="h-4 w-4 group-hover:-translate-y-0.5 transition-transform" />
-                <span>Export Assessment PDF</span>
-              </a>
-
-              <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Action: <b className={
-                    currentStatus === 'APPROVED' ? 'text-emerald-400' :
-                    currentStatus === 'FIELD_INSPECTION' ? 'text-blue-400' :
-                    'text-rose-400'
-                  }>{currentStatus}</b></span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setLocalStatus('CHANGE_MODE')}
-                  className="text-slate-400 hover:text-slate-200 underline decoration-slate-600 hover:decoration-slate-300 transition-colors cursor-pointer"
-                >
-                  Change Decision
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 gap-1.5 font-mono text-[10px]">
-              <button
-                type="button"
-                onClick={() => handleUpdateStatus('APPROVED')}
-                className="p-2 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/50 text-emerald-300 font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95"
-              >
-                <CheckCircle className="h-3.5 w-3.5" />
-                <span>Approve</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleUpdateStatus('FIELD_INSPECTION')}
-                className="p-2 rounded-xl bg-blue-950/60 hover:bg-blue-900/80 border border-blue-500/50 text-blue-300 font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95"
-              >
-                <Search className="h-3.5 w-3.5" />
-                <span>Inspect</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleUpdateStatus('REJECTED')}
-                className="p-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 border border-rose-500/50 text-rose-300 font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95"
-              >
-                <XCircle className="h-3.5 w-3.5" />
-                <span>Reject</span>
-              </button>
-            </div>
-          )}
-
-          {feedback && (
-            <p className="text-[10px] text-center text-emerald-400 font-bold pt-1">
-              ✓ {feedback.text}
-            </p>
-          )}
+      <div className="pt-2 border-t border-slate-800 space-y-2">
+        <div className="flex justify-between items-center text-[10px] font-bold text-slate-400">
+          <span>HITL DISPATCH ACTIONS</span>
+          <span className="text-orange-400 font-mono">{currentStatus}</span>
         </div>
-      )}
+
+        {isActioned ? (
+          <div className="space-y-2 pt-0.5">
+            <a
+              href={`${api.getBaseUrl()}/api/assessments/${assessment.assessment_id}/pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full p-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-400/50 text-white font-bold transition-all shadow-lg shadow-emerald-950/60 flex items-center justify-center gap-2 cursor-pointer text-[11px] tracking-wider uppercase group"
+            >
+              <Download className="h-4 w-4 group-hover:-translate-y-0.5 transition-transform" />
+              <span>Export Assessment PDF</span>
+            </a>
+
+            <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Action: <b className={
+                  currentStatus === 'APPROVED' ? 'text-emerald-400' :
+                  currentStatus === 'FIELD_INSPECTION' ? 'text-blue-400' :
+                  'text-rose-400'
+                }>{currentStatus}</b></span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setLocalStatus('CHANGE_MODE')}
+                className="text-slate-400 hover:text-slate-200 underline decoration-slate-600 hover:decoration-slate-300 transition-colors cursor-pointer"
+              >
+                Change Decision
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-1.5 font-mono text-[10px]">
+            <button
+              type="button"
+              onClick={() => handleUpdateStatus('APPROVED')}
+              className="p-2 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/50 text-emerald-300 font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+            >
+              <CheckCircle className="h-3.5 w-3.5" />
+              <span>Approve</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleUpdateStatus('FIELD_INSPECTION')}
+              className="p-2 rounded-xl bg-blue-950/60 hover:bg-blue-900/80 border border-blue-500/50 text-blue-300 font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+            >
+              <Search className="h-3.5 w-3.5" />
+              <span>Inspect</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleUpdateStatus('REJECTED')}
+              className="p-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 border border-rose-500/50 text-rose-300 font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+            >
+              <XCircle className="h-3.5 w-3.5" />
+              <span>Reject</span>
+            </button>
+          </div>
+        )}
+
+        {feedback && (
+          <p className="text-[10px] text-center text-emerald-400 font-bold pt-1">
+            ✓ {feedback.text}
+          </p>
+        )}
+      </div>
 
     </aside>
   );

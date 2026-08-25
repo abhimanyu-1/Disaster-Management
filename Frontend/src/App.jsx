@@ -259,6 +259,8 @@ export default function App() {
               assessment={currentAssessment}
               inferenceTime={inferenceTime}
               onVerificationUpdated={handleVerificationUpdated}
+              isProcessing={isProcessing}
+              pipelineState={pipelineState}
             />
           </div>
 
