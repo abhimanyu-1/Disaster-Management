@@ -1,5 +1,3 @@
-import torch
-from transformers import SamModel, SamProcessor
 from PIL import Image
 import numpy as np
 from ..schemas.agent import SamAgentRequest, SamAgentResponse
@@ -11,11 +9,17 @@ _SAM_PROCESSOR = None
 def get_sam_components():
     global _SAM_MODEL, _SAM_PROCESSOR
     if _SAM_MODEL is None:
-        model_id = "facebook/sam-vit-base"
-        _SAM_PROCESSOR = SamProcessor.from_pretrained(model_id)
-        _SAM_MODEL = SamModel.from_pretrained(model_id)
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        _SAM_MODEL.to(device)
+        try:
+            import torch
+            from transformers import SamModel, SamProcessor
+            model_id = "facebook/sam-vit-base"
+            _SAM_PROCESSOR = SamProcessor.from_pretrained(model_id)
+            _SAM_MODEL = SamModel.from_pretrained(model_id)
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            _SAM_MODEL.to(device)
+        except ImportError:
+            print("[SAM Agent] PyTorch or Transformers not installed. Skipping SAM refinement.")
+            return None, None
     return _SAM_PROCESSOR, _SAM_MODEL
 
 def run_sam_inference(request: SamAgentRequest) -> SamAgentResponse:
@@ -51,6 +55,10 @@ def run_sam_inference(request: SamAgentRequest) -> SamAgentResponse:
     input_boxes = [[[pixel_xmin, pixel_ymin, pixel_xmax, pixel_ymax]]]
     
     processor, model = get_sam_components()
+    if processor is None or model is None:
+        return SamAgentResponse(refined_bbox=request.rough_bbox)
+        
+    import torch
     device = model.device
     
     inputs = processor(img, input_boxes=[input_boxes], return_tensors="pt").to(device)
@@ -65,30 +73,37 @@ def run_sam_inference(request: SamAgentRequest) -> SamAgentResponse:
         inputs["reshaped_input_sizes"].cpu()
     )
     
-    # Take the first mask (SAM predicts multiple masks, often 3. The first one is a good default or we could take the one with the highest iou score)
-    # output masks is a list of tensors
-    # masks[0] shape: (1, 3, H, W)
-    # We take the first predicted mask (index 0 out of 3)
-    best_mask = masks[0][0][0].numpy()
+    # Pick the mask with the highest IoU score predicted by the model
+    iou_scores = outputs.iou_scores.cpu().numpy()[0][0]  # shape: (3,)
+    best_mask_idx = np.argmax(iou_scores)
     
-    # Find bounding box of the boolean mask
-    y_indices, x_indices = np.where(best_mask)
+    # output masks is a list of tensors, masks[0] shape: (1, 3, H, W)
+    best_mask = masks[0][0][best_mask_idx].numpy()
     
-    if len(y_indices) == 0 or len(x_indices) == 0:
-        # Fallback to the original rough box if SAM fails to segment anything
-        return SamAgentResponse(refined_bbox=request.rough_bbox)
+    # Use cv2 to find distinct regions
+    import cv2
+    mask_uint8 = (best_mask * 255).astype(np.uint8)
+    contours, _ = cv2.findContours(mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    if not contours:
+        return SamAgentResponse(refined_bboxes=[request.rough_bbox])
         
-    new_pixel_xmin = np.min(x_indices)
-    new_pixel_xmax = np.max(x_indices)
-    new_pixel_ymin = np.min(y_indices)
-    new_pixel_ymax = np.max(y_indices)
+    refined_bboxes = []
+    total_area = width * height
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area < total_area * 0.01:
+            continue # skip regions smaller than 1% of image
+            
+        x, y, w, h = cv2.boundingRect(contour)
+        norm_ymin = int((y / height) * 1000)
+        norm_xmin = int((x / width) * 1000)
+        norm_ymax = int(((y + h) / height) * 1000)
+        norm_xmax = int(((x + w) / width) * 1000)
+        
+        refined_bboxes.append([norm_ymin, norm_xmin, norm_ymax, norm_xmax])
+        
+    if not refined_bboxes:
+        refined_bboxes = [request.rough_bbox]
     
-    # Convert back to normalized 0-1000 scale [ymin, xmin, ymax, xmax]
-    norm_ymin = int((new_pixel_ymin / height) * 1000)
-    norm_xmin = int((new_pixel_xmin / width) * 1000)
-    norm_ymax = int((new_pixel_ymax / height) * 1000)
-    norm_xmax = int((new_pixel_xmax / width) * 1000)
-    
-    refined_bbox = [norm_ymin, norm_xmin, norm_ymax, norm_xmax]
-    
-    return SamAgentResponse(refined_bbox=refined_bbox)
+    return SamAgentResponse(refined_bboxes=refined_bboxes)

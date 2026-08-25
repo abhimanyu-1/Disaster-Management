@@ -7,7 +7,7 @@ class VisionAssessment(BaseModel):
     damage_score: float
     confidence: float
     evidence: List[str]
-    bounding_box: List[int]
+    bounding_boxes: List[List[float]]
 
 
 class GeoAssessment(BaseModel):
@@ -37,6 +37,7 @@ class FinalDecision(BaseModel):
 
 class FinalAssessment(BaseModel):
     assessment_id: str
+    image_path: str = None
     vision: VisionAssessment
     geo_context: GeoAssessment
     assessment: SeverityAssessment

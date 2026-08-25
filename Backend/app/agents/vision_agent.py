@@ -3,6 +3,7 @@ from google import genai
 from PIL import Image
 import json
 from ..schemas.agent import VisionAgentRequest, VisionAgentResponse
+from ..config import GEMINI_MODEL
 from dotenv import load_dotenv
 
 # Load env variables
@@ -53,16 +54,36 @@ def analyze_images(request: VisionAgentRequest) -> VisionAgentResponse:
     }}
     """
     
-    response = client.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=[prompt, img]
-    )
-    
+    import time
+    for attempt in range(5):
+        try:
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=[prompt, img],
+                config={'response_mime_type': 'application/json'}
+            )
+            break
+        except Exception as e:
+            if "429" in str(e) or "Too Many Requests" in str(e):
+                if attempt == 4:
+                    raise
+                wait_time = 4 * (attempt + 1)
+                print(f"Vision Agent rate limited. Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                raise
+        
     text = response.text
+    
+    # Strip markdown if present
     if "```json" in text:
         text = text.split("```json")[1].split("```")[0].strip()
     elif "```" in text:
         text = text.split("```")[1].strip()
         
-    data = json.loads(text)
+    try:
+        data = json.loads(text)
+    except Exception as e:
+        print(f"Failed to parse JSON. Raw text was: {text}")
+        raise e
     return VisionAgentResponse(**data)
