@@ -28,6 +28,7 @@ def stream_workflow(request):
     })
     
     # 1. Vision Agent
+    print(f"\n[{assessment_id}] === 1. RUNNING VISION AGENT ===")
     yield json.dumps({
         "event": "step_start",
         "step": 1,
@@ -40,6 +41,7 @@ def stream_workflow(request):
         image_path=request.image_path,
         asset_id=asset_id
     ))
+    print(f"VISION AGENT OUTPUT: {vision_resp.model_dump_json(indent=2)}")
     
     yield json.dumps({
         "event": "step_complete",
@@ -59,6 +61,7 @@ def stream_workflow(request):
     time.sleep(1)
     
     # 2. SAM Agent (Refining Bounding Box)
+    print(f"\n[{assessment_id}] === 2. RUNNING SAM AGENT ===")
     yield json.dumps({
         "event": "step_start",
         "step": 2,
@@ -71,6 +74,7 @@ def stream_workflow(request):
         image_path=request.image_path,
         rough_bbox=vision_resp.bounding_box
     ))
+    print(f"SAM AGENT OUTPUT: {sam_resp.model_dump_json(indent=2)}")
     
     yield json.dumps({
         "event": "step_complete",
@@ -85,6 +89,7 @@ def stream_workflow(request):
     time.sleep(1)
     
     # 3. Geo Agent
+    print(f"\n[{assessment_id}] === 3. RUNNING GEO AGENT ===")
     yield json.dumps({
         "event": "step_start",
         "step": 3,
@@ -98,6 +103,7 @@ def stream_workflow(request):
         lat=request.lat,
         lon=request.lon
     ))
+    print(f"GEO AGENT OUTPUT: {geo_resp.model_dump_json(indent=2)}")
     
     yield json.dumps({
         "event": "step_complete",
@@ -121,6 +127,7 @@ def stream_workflow(request):
     elif severity_score > 0.4:
         severity_level = "MEDIUM"
         
+    print(f"\n[{assessment_id}] === 4. RUNNING CLAIM AGENT ===")
     yield json.dumps({
         "event": "step_start",
         "step": 4,
@@ -135,6 +142,7 @@ def stream_workflow(request):
         claim_amount=request.claim_amount,
         claim_desc=request.claim_desc
     ))
+    print(f"CLAIM AGENT OUTPUT: {claim_resp.model_dump_json(indent=2)}")
     
     yield json.dumps({
         "event": "step_complete",
@@ -154,6 +162,7 @@ def stream_workflow(request):
     time.sleep(1)
     
     # 5. Priority Agent
+    print(f"\n[{assessment_id}] === 5. RUNNING PRIORITY AGENT ===")
     yield json.dumps({
         "event": "step_start",
         "step": 5,
@@ -169,6 +178,7 @@ def stream_workflow(request):
         confidence=vision_resp.confidence,
         claim_risk=claim_resp.claim_risk
     ))
+    print(f"PRIORITY AGENT OUTPUT: {priority_resp.model_dump_json(indent=2)}")
     
     yield json.dumps({
         "event": "step_complete",
@@ -184,6 +194,7 @@ def stream_workflow(request):
     time.sleep(1)
     
     # 6. Verification Agent
+    print(f"\n[{assessment_id}] === 6. RUNNING VERIFICATION AGENT ===")
     yield json.dumps({
         "event": "step_start",
         "step": 6,
@@ -197,6 +208,7 @@ def stream_workflow(request):
         claim_risk=claim_resp.claim_risk,
         evidence_agreement="HIGH" if claim_resp.is_consistent else "LOW"
     ))
+    print(f"VERIFICATION AGENT OUTPUT: {verification_resp.model_dump_json(indent=2)}\n")
     
     status = "REVIEW_REQUIRED" if verification_resp.verification_required else "AUTO_APPROVED"
     
